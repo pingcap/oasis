@@ -1,0 +1,21 @@
+model:
+  train_count: 120
+  train_interval: 60
+  predict_interval: 300
+metrics:
+  qps:
+    features:
+      - mean
+      - std
+  latency:
+    features:
+      - mean
+      - std
+  server_is_busy:
+    features:
+      - mean
+      - std
+  channel_full:
+    features:
+      - mean
+      - std

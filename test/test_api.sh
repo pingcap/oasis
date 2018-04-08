@@ -3,11 +3,18 @@
 json_data='''
 {
     "data_source": {
-        "url": "http://40.125.162.12:38175"
+        "url": "http://40.125.162.12:39389"
     },
     "model": "iForest",
-    "metrics": ["qps", "latency"],
-    "timeout": "24h"
+    "metrics": ["qps"],
+    "timeout": "24h",
+    "config": {
+        "model": {
+            "train_count": 120,
+            "train_interval": 60,
+            "predict_interval": 300
+        }
+    }
 }
 '''
 

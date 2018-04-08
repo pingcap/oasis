@@ -21,7 +21,7 @@ from oasis.oasis import (
 )
 
 
-define("config", default="../docs/app.conf", help="path to config file")
+define("config", default="../conf/app.conf", help="path to config file")
 define("port", default=2333, help="service port")
 define("slack_token", default="", help="slack token")
 
@@ -44,7 +44,7 @@ def parse_config():
 
 
 def sig_handler(server, sig, frame):
-    io_loop = tornado.ioloop.IOLoop.instance()
+    io_loop = tornado.ioloop.IOLoop.current()
 
     def stop_loop(deadline):
         now = time.time()

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
+from __future__ import absolute_import
 
 from oasis.models.model import Model
 from oasis.datasource import PrometheusAPI, PrometheusQuery, Metrics

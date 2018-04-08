@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
+from __future__ import absolute_import
 
 import uuid
 import threading
@@ -95,16 +95,15 @@ class JobNewHandler(ModelHandler):
         data = json.loads(self.request.body)
         print(data)
         try:
-            slack_channel = DEFAULT_CHANNEL
-            if "slack_channel" in data:
-                slack_channel = data["slack_channel"]
+            slack_channel = data.get("slack_channel", DEFAULT_CHANNEL)
 
-            timeout = DEFAULT_JOB_TIMEOUT
-            if "timeout" in data:
-                timeout = data["timeout"]
+            timeout = data.get("timeout", DEFAULT_JOB_TIMEOUT)
+
+            config = data.get("config", None)
 
             job = Job(str(uuid.uuid4()), data["data_source"],
-                      data["model"], data["metrics"], slack_channel, timeout)
+                      data["model"], data["metrics"],
+                      slack_channel, timeout, config)
         except KeyError as e:
             self.finish({"code": HTTP_MISS_ARGS,
                          "message": "miss args %s" % e.args[0]})

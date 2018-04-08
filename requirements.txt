@@ -1,0 +1,8 @@
+scikit-learn
+numpy
+pandas
+requests
+tornado
+slackclient
+pytimeparse
+PyYAML

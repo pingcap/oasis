@@ -1,5 +1,16 @@
 ## oasis 使用说明 
 
+### 安装 
+
+```bash
+git clone git@github.com:pingcap/oasis.git 
+
+cd oasis 
+
+python setup.py install 
+
+oasis-server --config=./conf/app.conf
+```
 
 ### 接口说明 
 

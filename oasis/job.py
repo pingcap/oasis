@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
+from __future__ import absolute_import
 
 from oasis.datasource import DataSource
 
@@ -10,13 +10,15 @@ DEFAULT_JOB_TIMEOUT = "240h"
 class Job(object):
     """Job defines config for calculation job."""
     def __init__(self, id, data_source,
-                 model, metrics, slack_channel, timeout=DEFAULT_JOB_TIMEOUT):
+                 model, metrics, slack_channel,
+                 timeout=DEFAULT_JOB_TIMEOUT, config=None):
         self.id = id
         self.data_source = DataSource(data_source["url"])
         self.model = model
         self.metrics = metrics
         self.slack_channel = slack_channel
         self.timeout = timeout
+        self.config = config
     # def __init__(self, data):
     # self.__dict__ = json.loads(data)
 
