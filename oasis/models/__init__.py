@@ -6,3 +6,5 @@ from oasis.models.iforest import IForest
 from oasis.models.model import Model
 
 models = {"iForest": IForest}
+
+

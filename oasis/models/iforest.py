@@ -20,11 +20,9 @@ from oasis.libs.log import logger
 from oasis.libs.features import Features
 
 
-IFOREST_CONFIG_FILE = "%s/iforest.yml" % os.path.dirname(__file__)
-
-
 class IForest(Model):
     def __init__(self, job, callback):
+        super(IForest, self).__init__()
         self.job = job
         self.callback = callback
         self.api = PrometheusAPI(job.data_source)
@@ -35,7 +33,8 @@ class IForest(Model):
         self.__exit = False
         self.timer = Timer(timeparse(self.job.timeout), self.timeout_action)
         # TODO: make them configurable.
-        self.cfg = IForestConfig(job.config)
+        self.config_file = "%s/iforest.yml" % self.model_path
+        self.cfg = IForestConfig(self.config_file, job.config)
 
     def train(self, metric, query_expr, config):
         logger.info("[job-id:{id}][metric:{metric}] starting to get sample data"
@@ -164,12 +163,12 @@ class IForest(Model):
 
 
 class IForestConfig(object):
-    def __init__(self, config=None):
+    def __init__(self, config_file, config=None):
         self.model = dict()
         self.metrics = dict()
 
         # load config from config file
-        self._parse_config_file()
+        self._parse_config_file(config_file)
 
         # load config from json data
         if config is not None:
@@ -183,8 +182,8 @@ class IForestConfig(object):
         self.model.setdefault("train_interval", 60)
         self.model.setdefault("predict_interval", 300)
 
-    def _parse_config_file(self):
-        with open(IFOREST_CONFIG_FILE, 'r') as ymlfile:
+    def _parse_config_file(self, config_file):
+        with open(config_file, 'r') as ymlfile:
             cfg = yaml.load(ymlfile)
 
         if "model" in cfg:

@@ -7,6 +7,8 @@ git clone git@github.com:pingcap/oasis.git
 
 cd oasis 
 
+pip install -r requirements.txt
+
 python setup.py install 
 
 oasis-server --config=./conf/app.conf

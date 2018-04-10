@@ -3,7 +3,7 @@
 json_data='''
 {
     "data_source": {
-        "url": "http://40.125.162.12:39389"
+        "url": "http://40.125.162.12:31802"
     },
     "model": "iForest",
     "metrics": ["qps"],

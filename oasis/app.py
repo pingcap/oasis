@@ -12,6 +12,7 @@ import tornado.ioloop
 import signal
 from oasis.libs.log import logger
 from oasis.libs import alert
+from oasis.models import model
 from oasis.oasis import (
     JobNewHandler,
     JobDeleteHandler,
@@ -21,9 +22,11 @@ from oasis.oasis import (
 )
 
 
-define("config", default="../conf/app.conf", help="path to config file")
+define("config", default="", help="path to config file")
 define("port", default=2333, help="service port")
 define("slack_token", default="", help="slack token")
+define("models_path", default="",
+       help="path of models, including the config files of all models")
 
 MAX_WAIT_SECONDS_BEFORE_SHUTDOWN = 3
 
@@ -39,6 +42,11 @@ def parse_config():
         logger.error("slack token is required!!")
         sys.exit(1)
 
+    if options.models_path == "":
+        logger.error("models path is required!!")
+        sys.exit(1)
+
+    model.MODELS_PATH = options.models_path
     alert.SLACK_TOKEN = options.slack_token
     logger.info("config: {config}".format(config=options.items()))
 
