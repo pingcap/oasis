@@ -19,7 +19,7 @@ def send_to_slack(message, channel=DEFAULT_CHANNEL):
             channel=channel,
             text=message,
             username="metrics_bot",
-            timeout="3s",
+            timeout=5,
         )
     except Exception as e:
         logger.error("send message:{message} to slack channel:{channel} failed, error:{error}"

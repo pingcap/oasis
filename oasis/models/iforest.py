@@ -66,7 +66,7 @@ class IForest(Model):
             self.event.wait(self.cfg.model["train_interval"])
         logger.info("[job-id:{id}][metric:{metric}] starting to train sample data"
                     .format(id=sub_id(self.job.id), metric=metric))
-        self.ilf[metric].fit(self.df[metric])
+        self.ilf[metric].fit(self.df[metric][config["features"]])
         return True
 
     def train_task(self, metric, query, config):
@@ -115,12 +115,12 @@ class IForest(Model):
         for data in data_set.values():
             values.append(float(data))
 
-        df_one = {}
+        df_one = []
         for key in config["features"]:
             if key in Features:
-                df_one[key] = Features[key](values)
+                df_one.append(Features[key](values))
 
-        predict_data = np.array([df_one.values()])
+        predict_data = np.array([df_one])
 
         logger.info("[job-id:{id}][metric:{metric}] predict data:{predict_data}"
                     .format(id=sub_id(self.job.id),
