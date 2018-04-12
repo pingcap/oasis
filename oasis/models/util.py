@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import collections
 
 JOB_ID_LEN = 8
+EPS = 0.00001
 
 
 def sub_id(st):
@@ -34,3 +35,4 @@ def get_object(dict_data):
     @return :class:Struct
     """
     return Struct(dict_data)
+

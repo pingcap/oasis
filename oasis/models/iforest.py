@@ -7,32 +7,25 @@ import numpy as np
 import pandas as pd
 import datetime
 import random
-import yaml
-import os
-from threading import Thread
 from oasis.datasource import PrometheusAPI, PrometheusQuery, Metrics
 from sklearn.ensemble import IsolationForest
-from threading import Event, Lock, Timer
+from threading import Timer, Thread
 from pytimeparse.timeparse import timeparse
-from oasis.models.model import Model
+from oasis.models.model import Model, Config
 from oasis.models.util import sub_id
 from oasis.libs.log import logger
 from oasis.libs.features import Features
+from oasis.libs.alert import send_to_slack
 
 
 class IForest(Model):
-    def __init__(self, job, callback):
+    def __init__(self, job):
         super(IForest, self).__init__()
         self.job = job
-        self.callback = callback
         self.api = PrometheusAPI(job.data_source)
         self.df = dict()
         self.ilf = dict()
-        self.event = Event()
-        self.lock = Lock()
-        self.__exit = False
         self.timer = Timer(timeparse(self.job.timeout), self.timeout_action)
-        # TODO: make them configurable.
         self.config_file = "%s/iforest.yml" % self.model_path
         self.cfg = IForestConfig(self.config_file, job.config)
 
@@ -42,7 +35,7 @@ class IForest(Model):
         self.df[metric] = pd.DataFrame(columns=config["features"])
         self.ilf[metric] = IsolationForest(n_estimators=100, verbose=2)
         for index in range(0, self.cfg.model["train_count"], 1):
-            if self.__exit:
+            if self._exit:
                 logger.info("[job-id:{id}][metric:{metric}] stop"
                             .format(id=sub_id(self.job.id), metric=metric))
                 return False
@@ -63,7 +56,7 @@ class IForest(Model):
                 logger.info("[job-id:{id}][metric:{metric}] append data to train df:{df_one}"
                             .format(id=sub_id(self.job.id), metric=metric, df_one=df_one))
 
-            self.event.wait(self.cfg.model["train_interval"])
+            self.event.wait(timeparse(self.cfg.model["train_interval"]))
         logger.info("[job-id:{id}][metric:{metric}] starting to train sample data"
                     .format(id=sub_id(self.job.id), metric=metric))
         self.ilf[metric].fit(self.df[metric][config["features"]])
@@ -88,10 +81,10 @@ class IForest(Model):
     def predict(self, metric, query_expr, config):
         logger.info("[job-id:{id}][metric:{metric}]starting to predict"
                     .format(id=sub_id(self.job.id), metric=metric))
-        while not self.__exit:
+        while not self._exit:
             now = datetime.datetime.now()
             query = PrometheusQuery(query_expr,
-                                    time.mktime((now - datetime.timedelta(minutes=5)).timetuple()),
+                                    time.mktime((now - datetime.timedelta(minutes=10)).timetuple()),
                                     time.mktime(now.timetuple()), "15s")
 
             if self.predict_task(metric, query, config) == 1:
@@ -100,12 +93,11 @@ class IForest(Model):
             else:
                 logger.info("[job-id:{id}][metric:{metric}] Predict Error"
                             .format(id=sub_id(self.job.id), metric=metric))
-                self.callback("[job] {job}, predict metric {metric} error in last {time}s"
-                              .format(job=dict(self.job), metric=metric,
-                                      time=self.cfg.model["predict_interval"]),
+                send_to_slack("[job] {job}, predict metric {metric} error"
+                              .format(job=dict(self.job), metric=metric),
                               self.job.slack_channel)
 
-            self.event.wait(self.cfg.model["predict_interval"])
+            self.event.wait(timeparse(self.cfg.model["predict_interval"]))
         logger.info("[job-id:{id}][metric:{metric}] stop"
                     .format(id=sub_id(self.job.id), metric=metric))
 
@@ -132,74 +124,45 @@ class IForest(Model):
         for key in self.job.metrics:
             if key in Metrics:
                 val = Metrics[key]
-                config = {"features": ["mean", "std"]}
-                if key in self.cfg.metrics and "features" in self.cfg.metrics[key]:
-                    config = self.cfg.metrics[key]
+                if key not in self.cfg.metrics:
+                    continue
 
-                t = Thread(target=self.run_action, args=(key, val, config, ))
+                t = Thread(target=self.run_action,
+                           args=(key, val, self.cfg.metrics[key]))
                 t.start()
+                self.threads[key] = t
 
     def run_action(self, metric, val, config):
+        logger.info("[job-id:{id}][metric:{metric}] start to run"
+                    .format(id=sub_id(self.job.id), metric=metric))
         if self.train(metric, val, config):
             self.predict(metric, val, config)
 
     def close(self):
         # TODO: close this job
-        with self.lock:
-            logger.info("[job-id:{id}] closing the job"
-                        .format(id=sub_id(self.job.id)))
-            self.__exit = True
-            self.event.set()
-
-            self.timer.cancel()
+        logger.info("[job-id:{id}] closing the job"
+                    .format(id=sub_id(self.job.id)))
+        super(IForest, self).close()
+        self.timer.cancel()
 
     def timeout_action(self):
-        # TODO: do some clean action after timeout
-        with self.lock:
-            logger.info("[job-id:{id}] finish the job"
-                        .format(id=sub_id(self.job.id)))
-            self.__exit = True
-            self.event.set()
+        logger.info("[job-id:{id}] finish the job"
+                    .format(id=sub_id(self.job.id)))
+        super(IForest, self).close()
 
 
-class IForestConfig(object):
-    def __init__(self, config_file, config=None):
-        self.model = dict()
-        self.metrics = dict()
-
-        # load config from config file
-        self._parse_config_file(config_file)
-
-        # load config from json data
-        if config is not None:
-            self._parse_api_config(config)
-
-        # set default value
-        self._set_default_config()
+class IForestConfig(Config):
+    def __init__(self, config_file, config_json=None):
+        super(IForestConfig, self).__init__(config_file, config_json)
 
     def _set_default_config(self):
         self.model.setdefault("train_count", 120)
-        self.model.setdefault("train_interval", 60)
-        self.model.setdefault("predict_interval", 300)
+        self.model.setdefault("train_interval", "60s")
+        self.model.setdefault("predict_interval", "5m")
 
-    def _parse_config_file(self, config_file):
-        with open(config_file, 'r') as ymlfile:
-            cfg = yaml.load(ymlfile)
-
-        if "model" in cfg:
-            self.model = cfg["model"]
-
-        if "metrics" in cfg:
-            self.metrics = cfg["metrics"]
-
-    def _parse_api_config(self, config):
-        for section in config:
-            if section == "model":
-                for key in config[section]:
-                    self.model[key] = config[section][key]
-            elif section == "metrics":
-                for key in config[section]:
-                    self.metrics[key] = config[section][key]
-
-
+        for metric in Metrics.keys():
+            self.metrics[metric] = {
+                "features": ["mean", "std"],
+                "rules": ["features[std] > 1000"]
+            }
 

@@ -3,13 +3,13 @@
 from __future__ import absolute_import
 
 import uuid
-import threading
 import json
-from concurrent.futures import ThreadPoolExecutor
 import tornado.gen
 import tornado.web
+import tornado.locks
+from concurrent.futures import ThreadPoolExecutor
 from oasis.models import models
-from oasis.libs.alert import send_to_slack, DEFAULT_CHANNEL
+from oasis.libs.alert import DEFAULT_CHANNEL
 from oasis.libs.log import logger
 from oasis.job import Job, DEFAULT_JOB_TIMEOUT
 
@@ -18,7 +18,7 @@ HTTP_FAIL = 403
 HTTP_OK = 200
 
 runners = dict()
-lock = threading.Lock()
+lock = tornado.locks.Lock()
 
 
 class ModelHandler(tornado.web.RequestHandler):
@@ -29,10 +29,9 @@ class ModelHandler(tornado.web.RequestHandler):
         if job.model not in models:
             raise ValueError("model:{model} is not supported"
                              .format(model=job.model))
-            # raise ModelNotSupportException(model_name=job.model)
 
         model = models[job.model]
-        runner = model(job, send_to_slack)
+        runner = model(job)
         lock.acquire()
         runners[job.id] = runner
         lock.release()
@@ -50,7 +49,7 @@ class ModelHandler(tornado.web.RequestHandler):
         if job_id not in runners:
             raise ValueError("job:{job_id} is not running"
                              .format(job_id=job_id))
-            # raise JobNotExistsException(job_id=job_id)
+
         lock.acquire()
         runner = runners[job_id]
         runner.close()
@@ -89,18 +88,22 @@ class ModelHandler(tornado.web.RequestHandler):
 
 
 class JobNewHandler(ModelHandler):
-    @tornado.web.asynchronous
-    @tornado.gen.coroutine
     def post(self):
-        data = json.loads(self.request.body)
-        print(data)
         try:
-            slack_channel = data.get("slack_channel", DEFAULT_CHANNEL)
+            data = json.loads(self.request.body)
+        except Exception as e:
+            logger.error("load json: {json_data}\nfailed: {err}"
+                         .format(json_data=self.request.body, err=str(e)))
+            self.finish({"code": HTTP_FAIL,
+                         "message": "load json data failed: {err}"
+                        .format(err=str(e))})
+            return
 
-            timeout = data.get("timeout", DEFAULT_JOB_TIMEOUT)
+        slack_channel = data.get("slack_channel", DEFAULT_CHANNEL)
+        timeout = data.get("timeout", DEFAULT_JOB_TIMEOUT)
+        config = data.get("config", None)
 
-            config = data.get("config", None)
-
+        try:
             job = Job(str(uuid.uuid4()), data["data_source"],
                       data["model"], data["metrics"],
                       slack_channel, timeout, config)
@@ -124,8 +127,6 @@ class JobNewHandler(ModelHandler):
 
 
 class JobDeleteHandler(ModelHandler):
-    @tornado.web.asynchronous
-    @tornado.gen.coroutine
     def get(self, job_id):
         if job_id == "":
             logger.error("job id is required")
@@ -147,8 +148,6 @@ class JobDeleteHandler(ModelHandler):
 
 
 class JobListHandler(ModelHandler):
-    @tornado.web.asynchronous
-    @tornado.gen.coroutine
     def get(self):
         logger.info("list all running jobs")
         jobs = self.list_jobs()
@@ -160,8 +159,6 @@ class JobListHandler(ModelHandler):
 
 
 class JobDetailHandler(ModelHandler):
-    @tornado.web.asynchronous
-    @tornado.gen.coroutine
     def get(self, job_id):
         if job_id == "":
             logger.error("job id is required")

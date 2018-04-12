@@ -4,7 +4,11 @@ from __future__ import absolute_import
 
 from oasis.models.iforest import IForest
 from oasis.models.model import Model
+from oasis.models.rules import Rules
 
-models = {"iForest": IForest}
+models = {
+    "iForest": IForest,
+    "rules": Rules,
+}
 
 

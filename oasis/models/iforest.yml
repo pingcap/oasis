@@ -1,8 +1,21 @@
 model:
+  # define the number of training samples.
   train_count: 120
-  train_interval: 60
-  predict_interval: 300
+
+  # define the range of the query metric for training.
+  train_data_range: 15m
+
+  # define the interval of the query metric for training.
+  train_interval: 60s
+
+  # define the interval of the query metric for predict.
+  predict_data_range: 5m
+
+  # define the interval of the query metric for predict.
+  predict_interval: 5m
+
 metrics:
+  # support features: mean, std, var, sum, min, max
   qps:
     features:
       - mean

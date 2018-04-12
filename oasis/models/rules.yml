@@ -1,0 +1,22 @@
+model:
+  # define the range of the query metric.
+  data_range: 10m
+
+  # define the interval of the query metric for predict.
+  predict_interval: 5m
+
+metrics:
+  # support features: mean, std, var, sum, min, max
+  #
+  # rules:
+  # features[std]
+  #
+  # features[std] represents the standard deviation of the all metrics
+  # during the interval time.
+  qps:
+    features:
+      - mean
+      - std
+    rules:
+      - features[std] > 400
+

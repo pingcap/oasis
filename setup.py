@@ -21,7 +21,7 @@ with open('requirements.txt') as requirements_file:
 setup(
     name='oasis',
     version='0.0.1',
-    author="pingcap",
+    author="PingCAP Team",
     author_email="info@pingcap.com",
 
     packages=[
@@ -34,7 +34,8 @@ setup(
     include_package_data=True,
 
     package_data={
-        '': ['oasis/models/iforest.yml'],
+        '': ['oasis/models/iforest.yml',
+             'oasis/models/rules.yml']
     },
 
     data_files=[],
