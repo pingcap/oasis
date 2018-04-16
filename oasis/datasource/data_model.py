@@ -23,6 +23,6 @@ class DataSource(object):
     def __init__(self, url):
         self.url = url
 
-    def __iter__(self):
-        yield "url", self.url
+    def to_dict(self):
+        return {"url": self.url}
 

@@ -5,7 +5,6 @@ from __future__ import absolute_import
 import yaml
 from threading import Event, Lock
 from oasis.libs.log import logger
-from oasis.models.util import sub_id
 
 MODELS_PATH = ""
 THREAD_JOIN_TIMEOUT = 5
@@ -13,12 +12,15 @@ THREAD_JOIN_TIMEOUT = 5
 
 class Model(object):
     """Model is a abstract of calculation model."""
-    def __init__(self):
+    def __init__(self, name, job_id):
+        self.name = name
         self.threads = dict()
         self.event = Event()
         self.lock = Lock()
         self._exit = False
         self.model_path = MODELS_PATH
+        self.log_prefix = "[job-id:{id}][model:{model}]"\
+            .format(id=job_id, model=name)
 
     def run(self):
         logger.info("run model")

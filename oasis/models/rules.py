@@ -9,24 +9,30 @@ from pytimeparse.timeparse import timeparse
 from oasis.models.model import Model, Config
 from oasis.datasource import PrometheusAPI, PrometheusQuery, Metrics
 from oasis.libs.log import logger
-from oasis.models.util import sub_id, EPS
+from oasis.models.util import EPS
 from oasis.libs.features import Features
 from oasis.libs.alert import send_to_slack
 from oasis.libs.rules import parse_rule, OPERATORS
 
+RULES_MODEL_NAME = "rules"
+
 
 class Rules(Model):
-    def __init__(self, job):
-        super(Rules, self).__init__()
-        self.job = job
-        self.api = PrometheusAPI(job.data_source)
-        self.timer = Timer(timeparse(self.job.timeout), self.timeout_action)
+    def __init__(self, job_id, model, data_source, slack_channel):
+        super(Rules, self).__init__(RULES_MODEL_NAME, job_id)
+        self.api = PrometheusAPI(data_source)
+        self.slack_channel = slack_channel
+        self.timer = Timer(timeparse(model.get("timeout", "240h")),
+                           self.timeout_action)
+        self.metrics = model.get("metrics")
         self.config_file = "%s/rules.yml" % self.model_path
-        self.cfg = RulesConfig(self.config_file, job.config)
+        self.cfg = RulesConfig(self.config_file, model.get("config", None))
 
     def run(self):
+        logger.info("{log_prefix} start to run"
+                    .format(log_prefix=self.log_prefix))
         self.timer.start()
-        for key in self.job.metrics:
+        for key in self.metrics:
             if key in Metrics:
                 val = Metrics[key]
                 if key not in self.cfg.metrics:
@@ -39,8 +45,8 @@ class Rules(Model):
                 self.threads[key] = t
 
     def run_action(self, metric, val, config, rules):
-        logger.info("[job-id:{id}][metric:{metric}] start ot run"
-                    .format(id=sub_id(self.job.id), metric=metric))
+        logger.info("{log_prefix}[metric:{metric}] start ot run"
+                    .format(log_prefix=self.log_prefix, metric=metric))
         self.compute(metric, val, config, rules)
 
     def compute(self, metric, query_expr, config, rules):
@@ -55,16 +61,16 @@ class Rules(Model):
             data_set = self.query_data(query_expr)
             if len(data_set) > 0:
                 features_value = self.extraction_features(data_set, config)
-                logger.info("[job-id:{id}][metric:{metric}] extraction features {value}, "
+                logger.info("{log_prefix}[metric:{metric}] extraction features {value}, "
                             "start to match with rule"
-                            .format(id=sub_id(self.job.id),
+                            .format(log_prefix=self.log_prefix,
                                     metric=metric, value=features_value))
                 self.match_rules(metric, features_value, rules)
 
             self.event.wait(timeparse(self.cfg.model["predict_interval"]))
 
-        logger.info("[job-id:{id}][metric:{metric}] stop"
-                    .format(id=sub_id(self.job.id), metric=metric))
+        logger.info("{log_prefix}[metric:{metric}] stop"
+                    .format(log_prefix=self.log_prefix, metric=metric))
 
     def query_data(self, query_expr):
         now = datetime.datetime.now()
@@ -95,27 +101,28 @@ class Rules(Model):
 
             if check_is_triggered(features_value[rule["feature"]],
                                   rule["operator"], rule["value"]):
-                logger.error("[job-id:{id}][metric:{metric}] not match rule: {rule}"
-                             .format(id=sub_id(self.job.id), metric=metric, rule=rule))
-                send_to_slack("[job] {job}, metric: {metric} not match rule: {rule}"
-                              .format(job=dict(self.job), metric=metric,
-                                      rule=rule), self.job.slack_channel)
+                logger.error("{log_prefix}[metric:{metric}] not match rule: {rule}"
+                             .format(log_prefix=self.log_prefix, metric=metric, rule=rule))
+                send_to_slack("{log_prefix}[model:{model}][metric:{metric}] not match rule: {rule}"
+                              .format(log_prefix=self.log_prefix,
+                                      model=self.name, metric=metric,
+                                      rule=rule), self.slack_channel)
                 match_flag = False
                 break
 
         if match_flag:
-            logger.info("[job-id:{id}][metric:{metric}] predict OK"
-                        .format(id=sub_id(self.job.id), metric=metric))
+            logger.info("{log_prefix}[metric:{metric}] predict OK"
+                        .format(log_prefix=self.log_prefix, metric=metric))
 
     def close(self):
-        logger.info("[job-id:{id}] closing the job"
-                    .format(id=sub_id(self.job.id)))
+        logger.info("{log_prefix} closing"
+                    .format(log_prefix=self.log_prefix))
         super(Rules, self).close()
         self.timer.cancel()
 
     def timeout_action(self):
-        logger.info("[job-id:{id}] finish the job"
-                    .format(id=sub_id(self.job.id)))
+        logger.info("{log_prefix} finish the model"
+                    .format(log_prefix=self.log_prefix))
         super(Rules, self).close()
 
 

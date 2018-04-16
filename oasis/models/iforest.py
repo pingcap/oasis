@@ -12,32 +12,36 @@ from sklearn.ensemble import IsolationForest
 from threading import Timer, Thread
 from pytimeparse.timeparse import timeparse
 from oasis.models.model import Model, Config
-from oasis.models.util import sub_id
 from oasis.libs.log import logger
 from oasis.libs.features import Features
 from oasis.libs.alert import send_to_slack
 
+IFOREST_MODEL_NAME = "iForest"
+
 
 class IForest(Model):
-    def __init__(self, job):
-        super(IForest, self).__init__()
-        self.job = job
-        self.api = PrometheusAPI(job.data_source)
+    def __init__(self, job_id, model, data_source, slack_channel):
+        super(IForest, self).__init__(IFOREST_MODEL_NAME, job_id)
+        self.api = PrometheusAPI(data_source)
+        self.slack_channel = slack_channel
         self.df = dict()
         self.ilf = dict()
-        self.timer = Timer(timeparse(self.job.timeout), self.timeout_action)
+        self.timer = Timer(timeparse(model.get("timeout", "240h")),
+                           self.timeout_action)
+        self.metrics = model.get("metrics")
         self.config_file = "%s/iforest.yml" % self.model_path
-        self.cfg = IForestConfig(self.config_file, job.config)
+        self.cfg = IForestConfig(self.config_file,
+                                 model.get("config", None))
 
     def train(self, metric, query_expr, config):
-        logger.info("[job-id:{id}][metric:{metric}] starting to get sample data"
-                    .format(id=sub_id(self.job.id), metric=metric))
+        logger.info("{log_prefix}[metric:{metric}] starting to get sample data"
+                    .format(log_prefix=self.log_prefix, metric=metric))
         self.df[metric] = pd.DataFrame(columns=config["features"])
         self.ilf[metric] = IsolationForest(n_estimators=100, verbose=2)
         for index in range(0, self.cfg.model["train_count"], 1):
             if self._exit:
-                logger.info("[job-id:{id}][metric:{metric}] stop"
-                            .format(id=sub_id(self.job.id), metric=metric))
+                logger.info("{log_prefix}[metric:{metric}] stop"
+                            .format(log_prefix=self.log_prefix, metric=metric))
                 return False
 
             now = datetime.datetime.now()
@@ -53,12 +57,13 @@ class IForest(Model):
                         df_one[key] = float(random.randint(0, 10000))
                 self.df[metric] = self.df[metric].append(df_one, ignore_index=True)
 
-                logger.info("[job-id:{id}][metric:{metric}] append data to train df:{df_one}"
-                            .format(id=sub_id(self.job.id), metric=metric, df_one=df_one))
+                logger.info("{log_prefix}[metric:{metric}] append data to train df:{df_one}"
+                            .format(log_prefix=self.log_prefix,
+                                    metric=metric, df_one=df_one))
 
             self.event.wait(timeparse(self.cfg.model["train_interval"]))
-        logger.info("[job-id:{id}][metric:{metric}] starting to train sample data"
-                    .format(id=sub_id(self.job.id), metric=metric))
+        logger.info("{log_prefix}[metric:{metric}] starting to train sample data"
+                    .format(log_prefix=self.log_prefix, metric=metric))
         self.ilf[metric].fit(self.df[metric][config["features"]])
         return True
 
@@ -74,13 +79,13 @@ class IForest(Model):
                 if key in Features:
                     df_one[key] = Features[key](values)
 
-            logger.info("[job-id:{id}][metric:{metric}] append data to train df:{df_one}"
-                        .format(id=sub_id(self.job.id), metric=metric, df_one=df_one))
+            logger.info("{log_prefix}[metric:{metric}] append data to train df:{df_one}"
+                        .format(log_prefix=self.log_prefix, metric=metric, df_one=df_one))
             self.df[metric] = self.df[metric].append(df_one, ignore_index=True)
 
     def predict(self, metric, query_expr, config):
-        logger.info("[job-id:{id}][metric:{metric}]starting to predict"
-                    .format(id=sub_id(self.job.id), metric=metric))
+        logger.info("{log_prefix}[metric:{metric}] starting to predict"
+                    .format(log_prefix=self.log_prefix, metric=metric))
         while not self._exit:
             now = datetime.datetime.now()
             query = PrometheusQuery(query_expr,
@@ -88,18 +93,19 @@ class IForest(Model):
                                     time.mktime(now.timetuple()), "15s")
 
             if self.predict_task(metric, query, config) == 1:
-                logger.info("[job-id:{id}][metric:{metric}] predict OK"
-                            .format(id=sub_id(self.job.id), metric=metric))
+                logger.info("{log_prefix}[metric:{metric}] predict OK"
+                            .format(log_prefix=self.log_prefix, metric=metric))
             else:
-                logger.info("[job-id:{id}][metric:{metric}] Predict Error"
-                            .format(id=sub_id(self.job.id), metric=metric))
-                send_to_slack("[job] {job}, predict metric {metric} error"
-                              .format(job=dict(self.job), metric=metric),
-                              self.job.slack_channel)
+                logger.info("{log_prefix}[metric:{metric}] Predict Error"
+                            .format(log_prefix=self.log_prefix, metric=metric))
+                send_to_slack("{log_prefix}[model:{model}], predict metric {metric} error"
+                              .format(log_prefix=self.log_prefix,
+                                      model=self.name, metric=metric),
+                              self.slack_channel)
 
             self.event.wait(timeparse(self.cfg.model["predict_interval"]))
-        logger.info("[job-id:{id}][metric:{metric}] stop"
-                    .format(id=sub_id(self.job.id), metric=metric))
+        logger.info("{log_prefix}[metric:{metric}] stop"
+                    .format(log_prefix=self.log_prefix, metric=metric))
 
     def predict_task(self, metric, query, config):
         data_set = self.api.query(query)
@@ -114,14 +120,16 @@ class IForest(Model):
 
         predict_data = np.array([df_one])
 
-        logger.info("[job-id:{id}][metric:{metric}] predict data:{predict_data}"
-                    .format(id=sub_id(self.job.id),
+        logger.info("{log_prefix}[metric:{metric}] predict data:{predict_data}"
+                    .format(log_prefix=self.log_prefix,
                             metric=metric, predict_data=predict_data))
         return self.ilf[metric].predict(predict_data)
 
     def run(self):
+        logger.info("{log_prefix} start to run"
+                    .format(log_prefix=self.log_prefix, model=self.name))
         self.timer.start()
-        for key in self.job.metrics:
+        for key in self.metrics:
             if key in Metrics:
                 val = Metrics[key]
                 if key not in self.cfg.metrics:
@@ -133,21 +141,21 @@ class IForest(Model):
                 self.threads[key] = t
 
     def run_action(self, metric, val, config):
-        logger.info("[job-id:{id}][metric:{metric}] start to run"
-                    .format(id=sub_id(self.job.id), metric=metric))
+        logger.info("{log_prefix}[metric:{metric}] start to run"
+                    .format(log_prefix=self.log_prefix, metric=metric))
         if self.train(metric, val, config):
             self.predict(metric, val, config)
 
     def close(self):
         # TODO: close this job
-        logger.info("[job-id:{id}] closing the job"
-                    .format(id=sub_id(self.job.id)))
+        logger.info("{log_prefix} closing"
+                    .format(log_prefix=self.log_prefix))
         super(IForest, self).close()
         self.timer.cancel()
 
     def timeout_action(self):
-        logger.info("[job-id:{id}] finish the job"
-                    .format(id=sub_id(self.job.id)))
+        logger.info("{log_prefix} finish the model"
+                    .format(log_prefix=self.log_prefix))
         super(IForest, self).close()
 
 

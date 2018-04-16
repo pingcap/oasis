@@ -8,12 +8,12 @@ import tornado.gen
 import tornado.web
 import tornado.locks
 from concurrent.futures import ThreadPoolExecutor
-from oasis.models import models
 from oasis.libs.alert import DEFAULT_CHANNEL
 from oasis.libs.log import logger
-from oasis.job import Job, DEFAULT_JOB_TIMEOUT
+from oasis.job import Job
 
 HTTP_MISS_ARGS = 401
+HTTP_ARGS_NOT_VALID = 402
 HTTP_FAIL = 403
 HTTP_OK = 200
 
@@ -26,22 +26,23 @@ class ModelHandler(tornado.web.RequestHandler):
 
     @tornado.gen.coroutine
     def run(self, job):
-        if job.model not in models:
-            raise ValueError("model:{model} is not supported"
-                             .format(model=job.model))
+        try:
+            if not job.valid():
+                raise ValueError("job {job} is invalid"
+                                 .format(job=job.to_dict()))
+        except Exception:
+            raise ValueError("job {job} is invalid"
+                             .format(job=job.to_dict()))
 
-        model = models[job.model]
-        runner = model(job)
-        lock.acquire()
-        runners[job.id] = runner
-        lock.release()
-
-        result = yield self._async_execute(runner)
+        result = yield self._async_execute(job)
         raise tornado.gen.Return(result)
 
     @tornado.concurrent.run_on_executor
-    def _async_execute(self, runner):
-        runner.run()
+    def _async_execute(self, job):
+        job.run()
+        lock.acquire()
+        runners[job.id] = job
+        lock.release()
         return True
 
     @staticmethod
@@ -62,7 +63,7 @@ class ModelHandler(tornado.web.RequestHandler):
         lock.acquire()
         jobs = []
         for job_id, runner in runners.items():
-            job = dict(runner.job)
+            job = runner.job.to_dict()
             jobs.append(job)
         lock.release()
         return jobs
@@ -84,7 +85,7 @@ class ModelHandler(tornado.web.RequestHandler):
         runner = runners[job_id]
         lock.release()
 
-        return dict(runner.job)
+        return runner.job.to_dict()
 
 
 class JobNewHandler(ModelHandler):
@@ -100,30 +101,29 @@ class JobNewHandler(ModelHandler):
             return
 
         slack_channel = data.get("slack_channel", DEFAULT_CHANNEL)
-        timeout = data.get("timeout", DEFAULT_JOB_TIMEOUT)
-        config = data.get("config", None)
 
         try:
             job = Job(str(uuid.uuid4()), data["data_source"],
-                      data["model"], data["metrics"],
-                      slack_channel, timeout, config)
+                      data["models"], slack_channel)
         except KeyError as e:
             self.finish({"code": HTTP_MISS_ARGS,
                          "message": "miss args %s" % e.args[0]})
+            return
 
         try:
             logger.info("run new job:{job}"
-                        .format(job=dict(job)))
+                        .format(job=job.to_dict()))
             self.run(job)
-            self.finish({"code": HTTP_OK,
-                        "message": "OK",
-                         "data": dict(job)})
         except Exception as e:
             logger.error("run job:{job} failed:{err}"
-                         .format(job=dict(job), err=e))
+                         .format(job=job.to_dict(), err=str(e)))
             self.finish({"code": HTTP_FAIL,
                          "message": "run job:{job} failed:{err}"
-                        .format(job=dict(job), err=e)})
+                        .format(job=job.to_dict(), err=str(e))})
+
+        self.finish({"code": HTTP_OK,
+                    "message": "OK",
+                     "data": job.to_dict()})
 
 
 class JobDeleteHandler(ModelHandler):
