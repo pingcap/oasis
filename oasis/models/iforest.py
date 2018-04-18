@@ -11,7 +11,7 @@ from oasis.datasource import PrometheusAPI, PrometheusQuery, Metrics
 from sklearn.ensemble import IsolationForest
 from threading import Timer, Thread
 from pytimeparse.timeparse import timeparse
-from oasis.models.model import Model, Config
+from oasis.models.model import Model, Config, ModelReport
 from oasis.libs.log import logger
 from oasis.libs.features import Features
 from oasis.libs.alert import send_to_slack
@@ -20,18 +20,18 @@ IFOREST_MODEL_NAME = "iForest"
 
 
 class IForest(Model):
-    def __init__(self, job_id, model, data_source, slack_channel):
+    def __init__(self, job_id, model, data_source, slack_channel, timeout):
         super(IForest, self).__init__(IFOREST_MODEL_NAME, job_id)
         self.api = PrometheusAPI(data_source)
         self.slack_channel = slack_channel
         self.df = dict()
         self.ilf = dict()
-        self.timer = Timer(timeparse(model.get("timeout", "240h")),
-                           self.timeout_action)
+        self.timer = Timer(timeparse(timeout), self.timeout_action)
         self.metrics = model.get("metrics")
         self.config_file = "%s/iforest.yml" % self.model_path
         self.cfg = IForestConfig(self.config_file,
                                  model.get("config", None))
+        self.report = ModelReport(self.name, job_id, self.cfg.to_dict())
 
     def train(self, metric, query_expr, config):
         logger.info("{log_prefix}[metric:{metric}] starting to get sample data"
@@ -92,18 +92,27 @@ class IForest(Model):
                                     time.mktime((now - datetime.timedelta(minutes=10)).timetuple()),
                                     time.mktime(now.timetuple()), "15s")
 
-            if self.predict_task(metric, query, config) == 1:
+            with self.lock:
+                self.report.metrics_report[metric]["predict_count"] = \
+                    self.report.metrics_report[metric]["predict_count"] + 1
+
+            is_match, predict_data = self.predict_task(metric, query, config)
+            if is_match == 1:
                 logger.info("{log_prefix}[metric:{metric}] predict OK"
                             .format(log_prefix=self.log_prefix, metric=metric))
             else:
-                logger.info("{log_prefix}[metric:{metric}] Predict Error"
-                            .format(log_prefix=self.log_prefix, metric=metric))
-                send_to_slack("{log_prefix}[model:{model}], predict metric {metric} error"
-                              .format(log_prefix=self.log_prefix,
-                                      model=self.name, metric=metric),
-                              self.slack_channel)
+                with self.lock:
+                    self.report.metrics_report[metric]["predict_errors"].append({
+                        "metric": metric,
+                        "time": now,
+                        "message": "predict metric {metric} error".format(metric=metric),
+                        "predict_data": predict_data,
+                    })
+
+                self.on_error(metric, predict_data)
 
             self.event.wait(timeparse(self.cfg.model["predict_interval"]))
+
         logger.info("{log_prefix}[metric:{metric}] stop"
                     .format(log_prefix=self.log_prefix, metric=metric))
 
@@ -123,22 +132,34 @@ class IForest(Model):
         logger.info("{log_prefix}[metric:{metric}] predict data:{predict_data}"
                     .format(log_prefix=self.log_prefix,
                             metric=metric, predict_data=predict_data))
-        return self.ilf[metric].predict(predict_data)
+
+        return self.ilf[metric].predict(predict_data), df_one
 
     def run(self):
         logger.info("{log_prefix} start to run"
                     .format(log_prefix=self.log_prefix, model=self.name))
         self.timer.start()
-        for key in self.metrics:
-            if key in Metrics:
-                val = Metrics[key]
-                if key not in self.cfg.metrics:
-                    continue
+        for metric in self.metrics:
+            if metric not in Metrics:
+                logger.error("{log_prefix}[metric:{metric}] is not supported"
+                             .format(log_prefix=self.log_prefix, metric=metric))
+                continue
 
-                t = Thread(target=self.run_action,
-                           args=(key, val, self.cfg.metrics[key]))
-                t.start()
-                self.threads[key] = t
+            val = Metrics[metric]
+            if metric not in self.cfg.metrics:
+                logger.error("{log_prefix}[metric:{metric}] can't found the config of this metric"
+                             .format(log_prefix=self.log_prefix, metric=metric))
+                continue
+
+            self.report.metrics_report[metric] = {
+                "predict_count": 0,
+                "predict_errors": [],
+            }
+
+            t = Thread(target=self.run_action,
+                       args=(metric, val, self.cfg.metrics[metric]))
+            t.start()
+            self.threads[metric] = t
 
     def run_action(self, metric, val, config):
         logger.info("{log_prefix}[metric:{metric}] start to run"
@@ -157,6 +178,20 @@ class IForest(Model):
         logger.info("{log_prefix} finish the model"
                     .format(log_prefix=self.log_prefix))
         super(IForest, self).close()
+
+    def on_error(self, metric, predict_data):
+        logger.info("{log_prefix}[metric:{metric}] Predict Error, predict data:{predict_data}"
+                    .format(log_prefix=self.log_prefix,
+                            metric=metric, predict_data=predict_data))
+        send_to_slack("{log_prefix}[model:{model}], predict metric {metric} error, "
+                      "predict data:{predict_data}"
+                      .format(log_prefix=self.log_prefix,
+                              model=self.name, metric=metric, predict_data=predict_data),
+                      self.slack_channel)
+
+    def get_report(self):
+        with self.lock:
+            return self.report.to_dict()
 
 
 class IForestConfig(Config):

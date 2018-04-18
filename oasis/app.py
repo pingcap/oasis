@@ -10,6 +10,7 @@ import tornado.web
 import tornado.httpserver
 import tornado.ioloop
 import signal
+from oasis import job
 from oasis.libs.log import logger
 from oasis.libs import alert
 from oasis.models import model
@@ -18,12 +19,14 @@ from oasis.oasis import (
     JobDeleteHandler,
     JobListHandler,
     JobDetailHandler,
-    ModelHandler
+    JobReportHandler,
+    JobHandler
 )
 
 
 define("config", default="", help="path to config file")
-define("port", default=2333, help="service port")
+define("port", default=33338, help="service port")
+define("address", default="", help="the address of external access")
 define("slack_token", default="", help="slack token")
 define("models_path", default="",
        help="path of models, including the config files of all models")
@@ -48,6 +51,8 @@ def parse_config():
 
     model.MODELS_PATH = options.models_path
     alert.SLACK_TOKEN = options.slack_token
+    job.REPORT_ADDRESS = options.address
+
     logger.info("config: {config}".format(config=options.items()))
 
 
@@ -66,7 +71,7 @@ def sig_handler(server, sig, frame):
     def shutdown():
         logger.info('Stopping http server')
         server.stop()
-        ModelHandler.close_all_jobs()
+        JobHandler.close_all_jobs()
         logger.info('Will shutdown in %s seconds ...',
                     MAX_WAIT_SECONDS_BEFORE_SHUTDOWN)
         stop_loop(time.time() + MAX_WAIT_SECONDS_BEFORE_SHUTDOWN)
@@ -80,6 +85,7 @@ def make_app():
         (r"/api/v1/job/new", JobNewHandler),
         (r"/api/v1/job/(?P<job_id>[\w+|\-]+)/detail", JobDetailHandler),
         (r"/api/v1/job/(?P<job_id>[\w+|\-]+)/delete", JobDeleteHandler),
+        (r"/api/v1/job/(?P<job_id>[\w+|\-]+)/report", JobReportHandler),
         (r"/api/v1/jobs/list", JobListHandler),
     ])
 

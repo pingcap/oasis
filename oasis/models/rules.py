@@ -6,7 +6,7 @@ import datetime
 import time
 from threading import Thread, Timer
 from pytimeparse.timeparse import timeparse
-from oasis.models.model import Model, Config
+from oasis.models.model import Model, Config, ModelReport
 from oasis.datasource import PrometheusAPI, PrometheusQuery, Metrics
 from oasis.libs.log import logger
 from oasis.models.util import EPS
@@ -18,31 +18,42 @@ RULES_MODEL_NAME = "rules"
 
 
 class Rules(Model):
-    def __init__(self, job_id, model, data_source, slack_channel):
+    def __init__(self, job_id, model, data_source, slack_channel, timeout):
         super(Rules, self).__init__(RULES_MODEL_NAME, job_id)
         self.api = PrometheusAPI(data_source)
         self.slack_channel = slack_channel
-        self.timer = Timer(timeparse(model.get("timeout", "240h")),
-                           self.timeout_action)
+        self.timer = Timer(timeparse(timeout), self.timeout_action)
         self.metrics = model.get("metrics")
         self.config_file = "%s/rules.yml" % self.model_path
         self.cfg = RulesConfig(self.config_file, model.get("config", None))
+        self.report = ModelReport(self.name, job_id, self.cfg.to_dict())
 
     def run(self):
         logger.info("{log_prefix} start to run"
                     .format(log_prefix=self.log_prefix))
         self.timer.start()
-        for key in self.metrics:
-            if key in Metrics:
-                val = Metrics[key]
-                if key not in self.cfg.metrics:
-                    continue
+        for metric in self.metrics:
+            if metric not in Metrics:
+                logger.error("{log_prefix}[metric:{metric}] is not supported"
+                             .format(log_prefix=self.log_prefix, metric=metric))
+                continue
 
-                t = Thread(target=self.run_action,
-                           args=(key, val, self.cfg.metrics[key],
-                                 self.cfg.rules[key]))
-                t.start()
-                self.threads[key] = t
+            val = Metrics[metric]
+            if metric not in self.cfg.metrics:
+                logger.error("{log_prefix}[metric:{metric}] can't found the config of this metric"
+                             .format(log_prefix=self.log_prefix, metric=metric))
+                continue
+
+            self.report.metrics_report[metric] = {
+                "predict_count": 0,
+                "predict_errors": [],
+            }
+
+            t = Thread(target=self.run_action,
+                       args=(metric, val, self.cfg.metrics[metric],
+                             self.cfg.rules[metric]))
+            t.start()
+            self.threads[metric] = t
 
     def run_action(self, metric, val, config, rules):
         logger.info("{log_prefix}[metric:{metric}] start ot run"
@@ -65,7 +76,21 @@ class Rules(Model):
                             "start to match with rule"
                             .format(log_prefix=self.log_prefix,
                                     metric=metric, value=features_value))
-                self.match_rules(metric, features_value, rules)
+                with self.lock:
+                    self.report.metrics_report[metric]["predict_count"] = \
+                        self.report.metrics_report[metric]["predict_count"] + 1
+
+                is_match, not_match_rule = self.match_rules(metric, features_value, rules)
+                if not is_match:
+                    with self.lock:
+                        self.report.metrics_report[metric].append({
+                            "metric": metric,
+                            "time": datetime.datetime.now(),
+                            "features_value": features_value,
+                            "not_match_rule": not_match_rule,
+                        })
+
+                    self.on_error(metric, not_match_rule)
 
             self.event.wait(timeparse(self.cfg.model["predict_interval"]))
 
@@ -95,24 +120,22 @@ class Rules(Model):
 
     def match_rules(self, metric, features_value, rules):
         match_flag = True
+        not_match_rule = None
         for rule in rules:
             if rule["feature"] not in features_value:
                 continue
 
             if check_is_triggered(features_value[rule["feature"]],
                                   rule["operator"], rule["value"]):
-                logger.error("{log_prefix}[metric:{metric}] not match rule: {rule}"
-                             .format(log_prefix=self.log_prefix, metric=metric, rule=rule))
-                send_to_slack("{log_prefix}[model:{model}][metric:{metric}] not match rule: {rule}"
-                              .format(log_prefix=self.log_prefix,
-                                      model=self.name, metric=metric,
-                                      rule=rule), self.slack_channel)
                 match_flag = False
+                not_match_rule = rule
                 break
 
         if match_flag:
             logger.info("{log_prefix}[metric:{metric}] predict OK"
                         .format(log_prefix=self.log_prefix, metric=metric))
+
+        return match_flag, not_match_rule
 
     def close(self):
         logger.info("{log_prefix} closing"
@@ -124,6 +147,18 @@ class Rules(Model):
         logger.info("{log_prefix} finish the model"
                     .format(log_prefix=self.log_prefix))
         super(Rules, self).close()
+
+    def on_error(self, metric, rule):
+        logger.error("{log_prefix}[metric:{metric}] not match rule: {rule}"
+                     .format(log_prefix=self.log_prefix, metric=metric, rule=rule))
+        send_to_slack("{log_prefix}[model:{model}][metric:{metric}] not match rule: {rule}"
+                      .format(log_prefix=self.log_prefix,
+                              model=self.name, metric=metric,
+                              rule=rule), self.slack_channel)
+
+    def get_report(self):
+        with self.lock:
+            return self.report.to_dict()
 
 
 class RulesConfig(Config):
@@ -160,6 +195,6 @@ def check_is_triggered(left_value, operator, right_value):
         ">=": (lambda: left_value >= right_value),
         "=": (lambda: abs(left_value-right_value) < EPS),
         "<": (lambda: left_value < right_value),
-        ">": (lambda: left_value > right_value),
+        ">": (lambda: left_value > right_value)
     }.get(operator, lambda: False)()
 

@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 import yaml
+import time
 from threading import Event, Lock
 from oasis.libs.log import logger
 
@@ -31,6 +32,9 @@ class Model(object):
             self.event.set()
             for key in self.threads:
                 self.threads[key].join(THREAD_JOIN_TIMEOUT)
+
+    def get_report(self):
+        return None
 
 
 class Config(object):
@@ -70,4 +74,30 @@ class Config(object):
 
     def _set_default_config(self):
         logger.info("set default config")
+
+    def to_dict(self):
+        return {
+            "model": self.model,
+            "metrics": self.metrics,
+            "config_file": self.config_file
+        }
+
+
+class ModelReport(object):
+    def __init__(self, model_name, job_id, model_config):
+        self.job_id = job_id
+        self.model_name = model_name
+        self.model_config = model_config
+        self.start_time = time.asctime(time.localtime(time.time()))
+        self.metrics_report = dict()
+
+    def to_dict(self):
+        return {
+            "job_id": self.job_id,
+            "model_name": self.model_name,
+            "model_config": self.model_config,
+            "start_time": self.start_time,
+            "metrics_report": self.metrics_report
+        }
+
 

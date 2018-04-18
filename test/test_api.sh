@@ -5,11 +5,11 @@ json_data='''
     "data_source": {
         "url": "http://40.125.162.12:31802"
     },
+    "timeout": "24h",
     "models": [
         {
             "name": "iForest",
             "metrics": ["qps"],
-            "timeout": "24h",
             "config": {
                 "model": {
                     "train_count": 120,
@@ -21,7 +21,6 @@ json_data='''
         {
             "name": "rules",
             "metrics": ["qps"],
-            "timeout": "24h",
             "config": {
                 "model": {
                     "data_range": "10m",
@@ -45,4 +44,4 @@ json_data='''
 curl -H "Content-Type: application/json" \
     -X POST \
     -d "${json_data}" \
-http://127.0.0.1:2333/api/v1/job/new
+http://127.0.0.1:33338/api/v1/job/new
