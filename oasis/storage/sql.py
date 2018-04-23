@@ -9,12 +9,12 @@ SCHEMA = '''
       
       CREATE TABLE IF NOT EXISTS model_instance (
             id INTEGER PRIMARY KEY , 
-            model_id INTEGER , 
+            model TEXT , 
             job_id INTEGER ,
             report TEXT,
             config TEXT ,  
             status TEXT); 
-      CREATE INDEX IF NOT EXISTS idx_mi_model ON model_instance(model_id); 
+      CREATE INDEX IF NOT EXISTS idx_mi_model ON model_instance(model); 
       CREATE INDEX IF NOT EXISTS idx_mi_job ON model_instance(job_id); 
       
       CREATE TABLE IF NOT EXISTS job (
