@@ -11,7 +11,13 @@ from oasis.datasource import PrometheusAPI, PrometheusQuery, Metrics
 from sklearn.ensemble import IsolationForest
 from threading import Timer, Thread
 from pytimeparse.timeparse import timeparse
-from oasis.models.model import Model, Config, ModelReport
+from oasis.models.model import (
+    Model,
+    Config,
+    MODEL_RUNNING,
+    MODEL_FINISH,
+    MODEL_STOP
+)
 from oasis.libs.log import logger
 from oasis.libs.features import Features
 from oasis.libs.alert import send_to_slack
@@ -20,18 +26,15 @@ IFOREST_MODEL_NAME = "iForest"
 
 
 class IForest(Model):
-    def __init__(self, job_id, model, data_source, slack_channel, timeout):
-        super(IForest, self).__init__(IFOREST_MODEL_NAME, job_id)
+    def __init__(self, md_instance, store, model, data_source, slack_channel, timeout):
+        super(IForest, self).__init__(IFOREST_MODEL_NAME, md_instance, store,
+                                      IForestConfig(store.get_model_template(IFOREST_MODEL_NAME), model.get("config", None)))
         self.api = PrometheusAPI(data_source)
         self.slack_channel = slack_channel
         self.df = dict()
         self.ilf = dict()
         self.timer = Timer(timeparse(timeout), self.timeout_action)
         self.metrics = model.get("metrics")
-        self.config_file = "%s/iforest.yml" % self.model_path
-        self.cfg = IForestConfig(self.config_file,
-                                 model.get("config", None))
-        self.report = ModelReport(self.name, job_id, self.cfg.to_dict())
 
     def train(self, metric, query_expr, config):
         logger.info("{log_prefix}[metric:{metric}] starting to get sample data"
@@ -111,6 +114,7 @@ class IForest(Model):
 
                 self.on_error(metric, predict_data)
 
+            self.save_model()
             self.event.wait(timeparse(self.cfg.model["predict_interval"]))
 
         logger.info("{log_prefix}[metric:{metric}] stop"
@@ -161,6 +165,9 @@ class IForest(Model):
             t.start()
             self.threads[metric] = t
 
+            self.status = MODEL_RUNNING
+            self.save_model()
+
     def run_action(self, metric, val, config):
         logger.info("{log_prefix}[metric:{metric}] start to run"
                     .format(log_prefix=self.log_prefix, metric=metric))
@@ -174,10 +181,16 @@ class IForest(Model):
         super(IForest, self).close()
         self.timer.cancel()
 
+        self.status = MODEL_STOP
+        self.save_model()
+
     def timeout_action(self):
         logger.info("{log_prefix} finish the model"
                     .format(log_prefix=self.log_prefix))
         super(IForest, self).close()
+
+        self.status = MODEL_FINISH
+        self.save_model()
 
     def on_error(self, metric, predict_data):
         logger.info("{log_prefix}[metric:{metric}] Predict Error, predict data:{predict_data}"
@@ -195,8 +208,8 @@ class IForest(Model):
 
 
 class IForestConfig(Config):
-    def __init__(self, config_file, config_json=None):
-        super(IForestConfig, self).__init__(config_file, config_json)
+    def __init__(self, model_template, config_json=None):
+        super(IForestConfig, self).__init__(model_template, config_json)
 
     def _set_default_config(self):
         self.model.setdefault("train_count", 120)

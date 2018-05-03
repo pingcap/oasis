@@ -27,3 +27,23 @@ class LoadDataException(Exception):
     def __init__(self, message):
         pass
 
+
+class NewJobException(Exception):
+    def __init__(self, job, message):
+        pass
+
+
+class JobNotRunningException(Exception):
+    def __init__(self, job):
+        pass
+
+
+class TaskTypeNotSupportedException(Exception):
+    def __init__(self, task):
+        pass
+
+
+class CloseJobException(Exception):
+    def __init__(self):
+        pass
+

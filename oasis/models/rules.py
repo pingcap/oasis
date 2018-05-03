@@ -6,7 +6,13 @@ import datetime
 import time
 from threading import Thread, Timer
 from pytimeparse.timeparse import timeparse
-from oasis.models.model import Model, Config, ModelReport
+from oasis.models.model import (
+    Model,
+    Config,
+    MODEL_RUNNING,
+    MODEL_FINISH,
+    MODEL_STOP
+)
 from oasis.datasource import PrometheusAPI, PrometheusQuery, Metrics
 from oasis.libs.log import logger
 from oasis.models.util import EPS
@@ -18,15 +24,13 @@ RULES_MODEL_NAME = "rules"
 
 
 class Rules(Model):
-    def __init__(self, job_id, model, data_source, slack_channel, timeout):
-        super(Rules, self).__init__(RULES_MODEL_NAME, job_id)
+    def __init__(self, md_instance, store, model, data_source, slack_channel, timeout):
+        super(Rules, self).__init__(RULES_MODEL_NAME, md_instance, store,
+                                    RulesConfig(store.get_model_template(RULES_MODEL_NAME), model.get("config", None)))
         self.api = PrometheusAPI(data_source)
         self.slack_channel = slack_channel
         self.timer = Timer(timeparse(timeout), self.timeout_action)
         self.metrics = model.get("metrics")
-        self.config_file = "%s/rules.yml" % self.model_path
-        self.cfg = RulesConfig(self.config_file, model.get("config", None))
-        self.report = ModelReport(self.name, job_id, self.cfg.to_dict())
 
     def run(self):
         logger.info("{log_prefix} start to run"
@@ -54,6 +58,9 @@ class Rules(Model):
                              self.cfg.rules[metric]))
             t.start()
             self.threads[metric] = t
+
+            self.status = MODEL_RUNNING
+            self.save_model()
 
     def run_action(self, metric, val, config, rules):
         logger.info("{log_prefix}[metric:{metric}] start ot run"
@@ -83,7 +90,7 @@ class Rules(Model):
                 is_match, not_match_rule = self.match_rules(metric, features_value, rules)
                 if not is_match:
                     with self.lock:
-                        self.report.metrics_report[metric].append({
+                        self.report.metrics_report[metric].get('predict_errors').append({
                             "metric": metric,
                             "time": datetime.datetime.now(),
                             "features_value": features_value,
@@ -92,6 +99,7 @@ class Rules(Model):
 
                     self.on_error(metric, not_match_rule)
 
+            self.save_model()
             self.event.wait(timeparse(self.cfg.model["predict_interval"]))
 
         logger.info("{log_prefix}[metric:{metric}] stop"
@@ -143,10 +151,16 @@ class Rules(Model):
         super(Rules, self).close()
         self.timer.cancel()
 
+        self.status = MODEL_STOP
+        self.save_model()
+
     def timeout_action(self):
         logger.info("{log_prefix} finish the model"
                     .format(log_prefix=self.log_prefix))
         super(Rules, self).close()
+
+        self.status = MODEL_FINISH
+        self.save_model()
 
     def on_error(self, metric, rule):
         logger.error("{log_prefix}[metric:{metric}] not match rule: {rule}"

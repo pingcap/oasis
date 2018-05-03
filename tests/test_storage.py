@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import
+
 import unittest
 import os
 import tempfile
+
 from oasis.storage import new_sqlite_storage
+from oasis.libs.log import logger
 
 
 class TestSQliteStorage(unittest.TestCase):
@@ -31,18 +35,32 @@ class TestSQliteStorage(unittest.TestCase):
             'slack_channel': 'oasis-channel',
             'reports': 'test-report-1',
             'model_instance_ids': '1',
-            'status': 'running'
+            'status': 'running',
+            'api_models_config': ''
         }
 
     def tearDown(self):
         os.unlink(self.db_path)
 
     def test_sqlite_storage(self):
+        logger.info("start to test sqlite storage")
+
+        logger.info("test set job")
         self._testSetJob()
+
+        logger.info("test set model template")
         self._testSetModelTemplate()
+
+        logger.info("test set model instance")
         self._testSetModelInstance()
+
+        logger.info("test load job")
         self._testLoadJob()
+
+        logger.info("test load model template")
         self._testLoadModelTemplate()
+
+        logger.info("test load model instance")
         self._testLoadModelInstance()
 
     def _testSetJob(self):
@@ -88,4 +106,8 @@ class TestSQliteStorage(unittest.TestCase):
     def _testLoadModelInstance(self):
         instances = self.sqlite_storage.list_model_instances()
         self.assertEqual(1, len(instances))
+
+
+if __name__ == "__main__":
+    unittest.main()
 

@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import
+
 import os
 import sqlite3
 from oasis.storage.sql import SCHEMA
+from oasis.libs.log import logger
 
 
 class SQLite(object):
@@ -45,7 +48,7 @@ class ModelTemplate(object):
 
     def add(self, m):
         self.db.execute('INSERT INTO model_template (name, config) VALUES (?, ?);',
-                        (m.get('name'), m.get('config')))
+                        (m.get('name'), str(m.get('config'))))
 
         return self.get(m.get('name'))
 
@@ -54,7 +57,7 @@ class ModelTemplate(object):
             'UPDATE model_template SET',
             '   config = ?',
             'WHERE name = ?;'],
-            (m.get('config'), m.get('name')))
+            (str(m.get('config')), m.get('name')))
 
         return self.get(m.get('name'))
 
@@ -102,7 +105,7 @@ class ModelInstance(object):
             '   report, status)',
             'VALUES (?, ?, ?, ?);'],
             (m.get('model'), m.get('job_id'),
-             m.get('report'), m.get('status'))
+             str(m.get('report')), m.get('status'))
         )
 
         m['id'] = stmt.lastrowid
@@ -115,7 +118,7 @@ class ModelInstance(object):
             '   report = ?, status = ?',
             'WHERE id = ?;'],
             (m.get('model'), m.get('job_id'),
-             m.get('report'), m.get('status'), m.get('id'))
+             str(m.get('report')), m.get('status'), m.get('id'))
         )
 
         return self.get(m.get('id'))
@@ -153,7 +156,7 @@ class Job(object):
        The id is primary key.
     """
     fields = ['id', 'data_source', 'models', 'timeout', 'slack_channel',
-              'report', 'model_instance_ids', 'status']
+              'reports', 'model_instance_ids', 'status', 'api_models_config']
 
     def __init__(self, db):
         self.db = db
@@ -163,11 +166,11 @@ class Job(object):
             'INSERT INTO job (',
             '   data_source, models, timeout,',
             '   slack_channel, reports,',
-            '   model_instance_ids, status)',
-            'VALUES (?, ?, ?, ?, ?, ?, ?);'],
-            (job.get('data_source'), job.get('models'),
-             job.get('timeout'), job.get('slack_channel'), job.get('reports'),
-             job.get('model_instance_ids'), job.get('status'))
+            '   model_instance_ids, status, api_models_config)',
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?);'],
+            (str(job.get('data_source')), job.get('models'),
+             job.get('timeout'), job.get('slack_channel'), str(job.get('reports')),
+             job.get('model_instance_ids'), job.get('status'), str(job.get('api_models_config')))
         )
 
         job['id'] = stmt.lastrowid
@@ -179,11 +182,12 @@ class Job(object):
             'UPDATE job SET ',
             '   data_source = ?, models = ?, timeout = ?,',
             '   slack_channel = ?, reports = ?,',
-            '   model_instance_ids = ?, status = ?',
+            '   model_instance_ids = ?, status = ?, api_models_config = ?',
             'WHERE id = ?;'],
-            (job.get('data_source'), job.get('models'),
-             job.get('timeout'), job.get('slack_channel'), job.get('reports'),
-             job.get('model_instance_ids'), job.get('status'), job.get('id'))
+            (str(job.get('data_source')), job.get('models'),
+             job.get('timeout'), job.get('slack_channel'), str(job.get('reports')),
+             job.get('model_instance_ids'), job.get('status'),
+             str(job.get('api_models_config')), job.get('id'))
         )
         return self.get(job.get('id'))
 

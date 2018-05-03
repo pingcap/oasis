@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import
+
 SCHEMA = '''
       CREATE TABLE IF NOT EXISTS model_template (
             id INTEGER PRIMARY KEY , 
@@ -25,7 +27,8 @@ SCHEMA = '''
             slack_channel TEXT , 
             reports TEXT , 
             model_instance_ids TEXT , 
-            status TEXT); 
+            status TEXT , 
+            api_models_config TEXT); 
 '''
 
 

@@ -29,12 +29,13 @@ setup(
         "oasis.datasource",
         "oasis.models",
         "oasis.libs",
+        "oasis.storage"
     ],
 
     include_package_data=True,
 
     package_data={
-        '': ['oasis/models/iforest.yml',
+        '': ['oasis/models/iForest.yml',
              'oasis/models/rules.yml']
     },
 

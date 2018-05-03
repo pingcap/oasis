@@ -11,17 +11,12 @@ import tornado.httpserver
 import tornado.ioloop
 import signal
 from oasis import job
+from oasis import manager as mg
+from oasis import handler as hd
 from oasis.libs.log import logger
 from oasis.libs import alert
-from oasis.models import model
-from oasis.oasis import (
-    JobNewHandler,
-    JobDeleteHandler,
-    JobListHandler,
-    JobDetailHandler,
-    JobReportHandler,
-    JobHandler
-)
+from oasis.manager import Manager
+from oasis.handler import OasisHandler
 
 
 define("config", default="", help="path to config file")
@@ -30,8 +25,11 @@ define("address", default="", help="the address of external access")
 define("slack_token", default="", help="slack token")
 define("models_path", default="",
        help="path of models, including the config files of all models")
+define("db_path", default="", help="the path of the database file")
 
 MAX_WAIT_SECONDS_BEFORE_SHUTDOWN = 3
+
+DEFAULT_DB_PATH = "./data/oasis.db"
 
 
 def parse_config():
@@ -49,14 +47,19 @@ def parse_config():
         logger.error("models path is required!!")
         sys.exit(1)
 
-    model.MODELS_PATH = options.models_path
+    if options.db_path == "":
+        logger.info("path of database is not set, use the default db path: {path}"
+                    .format(path=DEFAULT_DB_PATH))
+        options.db_path = DEFAULT_DB_PATH
+
+    mg.MODELS_PATH = options.models_path
     alert.SLACK_TOKEN = options.slack_token
     job.REPORT_ADDRESS = options.address
 
     logger.info("config: {config}".format(config=options.items()))
 
 
-def sig_handler(server, sig, frame):
+def sig_handler(server, manager, sig, frame):
     io_loop = tornado.ioloop.IOLoop.current()
 
     def stop_loop(deadline):
@@ -70,8 +73,8 @@ def sig_handler(server, sig, frame):
 
     def shutdown():
         logger.info('Stopping http server')
+        manager.close()
         server.stop()
-        JobHandler.close_all_jobs()
         logger.info('Will shutdown in %s seconds ...',
                     MAX_WAIT_SECONDS_BEFORE_SHUTDOWN)
         stop_loop(time.time() + MAX_WAIT_SECONDS_BEFORE_SHUTDOWN)
@@ -80,20 +83,25 @@ def sig_handler(server, sig, frame):
     io_loop.add_callback_from_signal(shutdown)
 
 
-def make_app():
+def make_app(handler):
     return tornado.web.Application([
-        (r"/api/v1/job/new", JobNewHandler),
-        (r"/api/v1/job/(?P<job_id>[\w+|\-]+)/detail", JobDetailHandler),
-        (r"/api/v1/job/(?P<job_id>[\w+|\-]+)/delete", JobDeleteHandler),
-        (r"/api/v1/job/(?P<job_id>[\w+|\-]+)/report", JobReportHandler),
-        (r"/api/v1/jobs/list", JobListHandler),
+        (r"/api/v1/job/new", handler.JobNewHandler),
+        (r"/api/v1/job/(?P<job_id>[\w+|\-]+)/detail", handler.JobDetailHandler),
+        (r"/api/v1/job/(?P<job_id>[\w+|\-]+)/stop", handler.JobStopHandler),
+        (r"/api/v1/job/(?P<job_id>[\w+|\-]+)/report", handler.JobReportHandler),
+        (r"/api/v1/jobs/list", handler.JobListHandler),
     ])
 
 
 def main():
     parse_config()
 
-    app = make_app()
+    manager = Manager(options.db_path)
+    hd.manager = manager
+
+    handler = OasisHandler()
+
+    app = make_app(handler)
     server = tornado.httpserver.HTTPServer(app)
     logger.info("oasis server start to listen {port}..."
                 .format(port=options.port))
@@ -101,7 +109,7 @@ def main():
 
     for sig in ('TERM', 'HUP', 'INT'):
         signal.signal(getattr(signal, 'SIG' + sig),
-                      partial(sig_handler, server))
+                      partial(sig_handler, server, manager))
 
     tornado.ioloop.IOLoop.current().start()
 

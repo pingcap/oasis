@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import absolute_import
+
 from threading import Lock
 from oasis.libs.log import logger
 from oasis.libs.iexceptions import LoadDataException
@@ -32,7 +34,7 @@ class Storage(object):
                 self.model_templates[model.get('name')] = model
 
             # load model instances
-            mis = self.client.model_instances.list()
+            mis = self.client.model_instance.list()
 
             for instance in mis:
                 self.model_instances[instance.get('id')] = instance
@@ -45,7 +47,8 @@ class Storage(object):
 
     def set_model_template(self, m):
         with self.lock:
-            if m.get('id') is None:
+            model_tmp = self.client.model_template.get(m.get('name'))
+            if model_tmp is None:
                 model = self.client.model_template.add(m)
             else:
                 model = self.client.model_template.update(m)
@@ -80,7 +83,7 @@ class Storage(object):
 
     def get_model_instance(self, id):
         with self.lock:
-            return self.model_instances.get(id)
+            return self.model_instances.get(int(id))
 
     def list_model_instances(self):
         with self.lock:
@@ -105,7 +108,7 @@ class Storage(object):
 
     def get_job(self, id):
         with self.lock:
-            return self.jobs.get(id)
+            return self.jobs.get(int(id))
 
     def list_jobs(self):
         with self.lock:
