@@ -25,7 +25,6 @@ SCHEMA = '''
             models TEXT , 
             timeout TEXT , 
             slack_channel TEXT , 
-            reports TEXT , 
             model_instance_ids TEXT , 
             status TEXT , 
             api_models_config TEXT); 

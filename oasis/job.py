@@ -36,11 +36,9 @@ class Job(object):
         self.timeout = data.get('timeout')
         self.status = data.get('status')
         self.running_models = []
-        self.report = dict()
         self.threads = dict()
         self.timer = None
         self.lock = Lock()
-        self.sync_thread = Thread(target=self.sync)
         self._exit = False
         self.event = Event()
 
@@ -48,6 +46,7 @@ class Job(object):
         return {
             "id": self.id,
             "data_source": self.data_source.to_dict(),
+            "status": self.status,
             "api_models_config": self.api_models_config,
             "slack_channel": self.slack_channel
         }
@@ -63,7 +62,6 @@ class Job(object):
             'models': ','.join(self.models_name),
             'slack_channel': self.slack_channel,
             'timeout': self.timeout,
-            'reports': str(self.report),
             'model_instance_ids': ','.join(model_ids),
             'status': self.status,
             'api_models_config': self.api_models_config
@@ -98,10 +96,6 @@ class Job(object):
             finally:
                 self.save_job()
 
-        logger.info("[job-id:{job_id}] start to sync"
-                    .format(job_id=self.id))
-        self.sync_thread.start()
-
     def close(self):
         with self.lock:
             logger.info("[job-id:{job_id}] start to stop"
@@ -117,7 +111,6 @@ class Job(object):
                     self.threads[model].join(THREAD_JOIN_TIMEOUT)
 
                 self.timer.cancel()
-                self.sync_thread.join()
             except Exception as e:
                 logger.info("[job-id:{job_id}] fail to stop: {err}"
                             .format(job_id=self.id, err=str(e)))
@@ -149,29 +142,6 @@ class Job(object):
                     return False
 
             return True
-
-    def sync(self):
-        while not self._exit:
-            self.sync_report()
-            self.save_job()
-            self.event.wait(timeparse(SYNC_INTERVAL))
-
-        logger.info("[job-id:{job_id}] stop to sync"
-                    .format(job_id=self.id))
-
-    def sync_report(self):
-        with self.lock:
-            model_reports = dict()
-            for model in self.running_models:
-                model_reports[model.name] = model.get_report()
-
-            self.report = {
-                "id": self.id,
-                "data_source": self.data_source.to_dict(),
-                "models": self.models_name,
-                "slack_channel": self.slack_channel,
-                "model_report": model_reports
-            }
 
     def timeout_action(self):
         logger.info("[job:{job}] finish"

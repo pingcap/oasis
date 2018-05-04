@@ -53,7 +53,6 @@ class Manager(object):
                 'timeout': timeout,
                 'slack_channel': slack_channel,
                 'status': JOB_PENDING,
-                'reports': '',
                 'model_instance_ids': '',
                 'api_models_config': models
             })
@@ -88,22 +87,28 @@ class Manager(object):
 
     def get_job(self, job_id):
         with self.lock:
-            job = self.storage.get_job(job_id)
+            job_store = self.storage.get_job(job_id)
 
-            if job is None:
+            if job_store is None:
                 raise JobNotExistsException(job_id)
+
+            job = job_store
+            job["model_instances"] = []
+
+            instance_ids_str = job.get('model_instance_ids')
+            if instance_ids_str is not None:
+                md_instance_ids = instance_ids_str.split(',')
+                for md_id in md_instance_ids:
+                    if md_id == '':
+                        continue
+
+                    instance = self.storage.get_model_instance(md_id)
+                    if instance is None:
+                        continue
+
+                    job["model_instances"].append(instance)
 
             return job
-
-    def get_job_report(self, job_id):
-        with self.lock:
-            job = self.storage.get_job(job_id)
-            logger.info(job)
-
-            if job is None:
-                raise JobNotExistsException(job_id)
-
-            return job.get('reports')
 
     def close(self):
         logger.info("closing the server")

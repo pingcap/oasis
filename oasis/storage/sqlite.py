@@ -156,7 +156,7 @@ class Job(object):
        The id is primary key.
     """
     fields = ['id', 'data_source', 'models', 'timeout', 'slack_channel',
-              'reports', 'model_instance_ids', 'status', 'api_models_config']
+              'model_instance_ids', 'status', 'api_models_config']
 
     def __init__(self, db):
         self.db = db
@@ -165,11 +165,11 @@ class Job(object):
         stmt = self.db.execute([
             'INSERT INTO job (',
             '   data_source, models, timeout,',
-            '   slack_channel, reports,',
-            '   model_instance_ids, status, api_models_config)',
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?);'],
+            '   slack_channel, model_instance_ids,'
+            '   status, api_models_config)',
+            'VALUES (?, ?, ?, ?, ?, ?, ?);'],
             (str(job.get('data_source')), job.get('models'),
-             job.get('timeout'), job.get('slack_channel'), str(job.get('reports')),
+             job.get('timeout'), job.get('slack_channel'),
              job.get('model_instance_ids'), job.get('status'), str(job.get('api_models_config')))
         )
 
@@ -181,11 +181,11 @@ class Job(object):
         self.db.execute([
             'UPDATE job SET ',
             '   data_source = ?, models = ?, timeout = ?,',
-            '   slack_channel = ?, reports = ?,',
-            '   model_instance_ids = ?, status = ?, api_models_config = ?',
+            '   slack_channel = ?,model_instance_ids = ?,',
+            '   status = ?, api_models_config = ?',
             'WHERE id = ?;'],
             (str(job.get('data_source')), job.get('models'),
-             job.get('timeout'), job.get('slack_channel'), str(job.get('reports')),
+             job.get('timeout'), job.get('slack_channel'),
              job.get('model_instance_ids'), job.get('status'),
              str(job.get('api_models_config')), job.get('id'))
         )
