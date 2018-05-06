@@ -88,7 +88,6 @@ def make_app(handler):
         (r"/api/v1/job/new", handler.JobNewHandler),
         (r"/api/v1/job/(?P<job_id>[\w+|\-]+)/detail", handler.JobDetailHandler),
         (r"/api/v1/job/(?P<job_id>[\w+|\-]+)/stop", handler.JobStopHandler),
-        (r"/api/v1/job/(?P<job_id>[\w+|\-]+)/report", handler.JobReportHandler),
         (r"/api/v1/jobs/list", handler.JobListHandler),
     ])
 

@@ -143,29 +143,5 @@ class OasisHandler(object):
             finally:
                 self.finish(data)
 
-    class JobReportHandler(tornado.web.RequestHandler):
-        def get(self, job_id):
-            if job_id == "":
-                logger.error("job id is required")
-                self.finish({"code": HTTP_MISS_ARGS,
-                            "message": "job id is required"})
-                return
-
-            try:
-                logger.info("get job:{job_id} report"
-                            .format(job_id=job_id))
-                report = manager.get_job_report(int(job_id))
-            except Exception as e:
-                logger.error("get job:{job_id} report failed:{err}"
-                            .format(job_id=job_id, err=str(e)))
-                logger.exception("Exception Logged")
-                data = {"code": HTTP_FAIL,
-                        "message": "get job:{job_id} report failed:{err}"
-                            .format(job_id=job_id, err=str(e))}
-            else:
-                data = {"code": HTTP_OK, "message": "OK", "data": report}
-            finally:
-                self.finish(data)
-
 
 

@@ -95,24 +95,25 @@ class IForest(Model):
                                     time.mktime((now - datetime.timedelta(minutes=10)).timetuple()),
                                     time.mktime(now.timetuple()), "15s")
 
-            with self.lock:
-                self.report.metrics_report[metric]["predict_count"] = \
-                    self.report.metrics_report[metric]["predict_count"] + 1
+            report = {
+                "metric": metric,
+                "time": now,
+            }
 
             is_match, predict_data = self.predict_task(metric, query, config)
             if is_match == 1:
                 logger.info("{log_prefix}[metric:{metric}] predict OK"
                             .format(log_prefix=self.log_prefix, metric=metric))
+                report["is_match"] = True
             else:
-                with self.lock:
-                    self.report.metrics_report[metric]["predict_errors"].append({
-                        "metric": metric,
-                        "time": now,
-                        "message": "predict metric {metric} error".format(metric=metric),
-                        "predict_data": predict_data,
-                    })
+                report["is_match"] = False
 
                 self.on_error(metric, predict_data)
+
+            report["predict_data"] = predict_data
+
+            with self.lock:
+                self.report.metrics_report[metric].append(report)
 
             self.save_model()
             self.event.wait(timeparse(self.cfg.model["predict_interval"]))
@@ -155,10 +156,7 @@ class IForest(Model):
                              .format(log_prefix=self.log_prefix, metric=metric))
                 continue
 
-            self.report.metrics_report[metric] = {
-                "predict_count": 0,
-                "predict_errors": [],
-            }
+            self.report.metrics_report[metric] = []
 
             t = Thread(target=self.run_action,
                        args=(metric, val, self.cfg.metrics[metric]))

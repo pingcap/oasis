@@ -29,6 +29,15 @@ def max(data):
     return np.max(data)
 
 
+def median(data):
+    return np.median(data)
+
+
+# return max(data) - min(data)
+def ptp(data):
+    return np.ptp(data)
+
+
 Features = {
     "mean": mean,
     "std": std,
@@ -36,5 +45,7 @@ Features = {
     "sum": sum,
     "min": min,
     "max": max,
+    "median": median,
+    "ptp": ptp
 }
 

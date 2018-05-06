@@ -31,11 +31,14 @@ class Rules(Model):
         self.slack_channel = slack_channel
         self.timer = Timer(timeparse(timeout), self.timeout_action)
         self.metrics = model.get("metrics")
+        # self.metrics_features = dict()
+        # self.metrics_collect_thread = None
 
     def run(self):
         logger.info("{log_prefix} start to run"
                     .format(log_prefix=self.log_prefix))
         self.timer.start()
+
         for metric in self.metrics:
             if metric not in Metrics:
                 logger.error("{log_prefix}[metric:{metric}] is not supported"
@@ -48,10 +51,7 @@ class Rules(Model):
                              .format(log_prefix=self.log_prefix, metric=metric))
                 continue
 
-            self.report.metrics_report[metric] = {
-                "predict_count": 0,
-                "predict_errors": [],
-            }
+            self.report.metrics_report[metric] = []
 
             t = Thread(target=self.run_action,
                        args=(metric, val, self.cfg.metrics[metric],
@@ -83,21 +83,25 @@ class Rules(Model):
                             "start to match with rule"
                             .format(log_prefix=self.log_prefix,
                                     metric=metric, value=features_value))
-                with self.lock:
-                    self.report.metrics_report[metric]["predict_count"] = \
-                        self.report.metrics_report[metric]["predict_count"] + 1
 
-                is_match, not_match_rule = self.match_rules(metric, features_value, rules)
-                if not is_match:
-                    with self.lock:
-                        self.report.metrics_report[metric].get('predict_errors').append({
-                            "metric": metric,
-                            "time": datetime.datetime.now(),
-                            "features_value": features_value,
-                            "not_match_rule": not_match_rule,
-                        })
+                report = {
+                    "metric": metric,
+                    "time": datetime.datetime.now(),
+                    "predict_data": features_value,
+                }
+
+                is_match, not_match_rule = self.match_rules(features_value, rules)
+                if is_match:
+                    logger.info("{log_prefix}[metric:{metric}] predict OK"
+                                .format(log_prefix=self.log_prefix, metric=metric))
+                else:
+                    report["is_match"] = False
+                    report["not_match_rule"] = not_match_rule
 
                     self.on_error(metric, not_match_rule)
+
+                with self.lock:
+                    self.report.metrics_report[metric].append(report)
 
             self.save_model()
             self.event.wait(timeparse(self.cfg.model["predict_interval"]))
@@ -126,7 +130,7 @@ class Rules(Model):
 
         return features_value
 
-    def match_rules(self, metric, features_value, rules):
+    def match_rules(self, features_value, rules):
         match_flag = True
         not_match_rule = None
         for rule in rules:
@@ -138,10 +142,6 @@ class Rules(Model):
                 match_flag = False
                 not_match_rule = rule
                 break
-
-        if match_flag:
-            logger.info("{log_prefix}[metric:{metric}] predict OK"
-                        .format(log_prefix=self.log_prefix, metric=metric))
 
         return match_flag, not_match_rule
 
@@ -173,6 +173,40 @@ class Rules(Model):
     def get_report(self):
         with self.lock:
             return self.report.to_dict()
+
+    # TODO: split collect metrics from the whole calculation process
+    # def collect_metrics(self):
+    #     logger.info("{log_prefix} start to collect metrics"
+    #                 .format(log_prefix=self.log_prefix))
+    #
+    #     for metric in self.metrics:
+    #         self.metrics_features[metric] = Queue()
+    #
+    #     while not self._exit:
+    #         for metric in self.metrics:
+    #             if not self._exit:
+    #                 break
+    #
+    #             if metric not in Metrics:
+    #                 logger.error("{log_prefix}[metric:{metric}] is not supported"
+    #                              .format(log_prefix=self.log_prefix, metric=metric))
+    #                 continue
+    #
+    #             query_expr = Metrics[metric]
+    #             if metric not in self.cfg.metrics:
+    #                 logger.error("{log_prefix}[metric:{metric}] can't found the config of this metric"
+    #                              .format(log_prefix=self.log_prefix, metric=metric))
+    #                 continue
+    #
+    #             data_set = self.query_data(query_expr)
+    #             if len(data_set) > 0:
+    #                 features_value = self.extraction_features(data_set, self.cfg.metrics[metric])
+    #
+    #                 self.metrics_features[metric].put(features_value)
+    #
+    #         self.event.wait(timeparse(self.cfg.model["predict_interval"]))
+    #
+    #     logger.info("{log_prefix} stop to collect metrics".format(log_prefix=self.log_prefix))
 
 
 class RulesConfig(Config):

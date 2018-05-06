@@ -14,9 +14,13 @@ RANGE_QUERY_API = "/api/v1/query_range"
 Metrics = {
     "qps": "sum(rate(tidb_server_query_total[1m])) "
            "by (status)",
-    "latency": "histogram_quantile(0.95, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))",
-    "server_is_busy": "sum(rate(tikv_scheduler_too_busy_total[1m])) by (job)",
-    "channel_full": "sum(rate(tikv_channel_full_total[1m])) by (job)"
+    "80_latency": "histogram_quantile(0.80, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))",
+    "95_latency": "histogram_quantile(0.95, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))",
+    "99_latency": "histogram_quantile(0.99, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))",
+    "connection_count": "sum(tidb_server_connections)",
+    "95_ddl_second": "histogram_quantile(0.95, sum(rate(tidb_ddl_handle_job_duration_seconds_bucket[1m])) by (le))",
+    "server_is_busy": "sum(rate(tikv_scheduler_too_busy_total[1m]))",
+    "channel_full": "sum(rate(tikv_channel_full_total[1m]))"
 }
 
 
