@@ -4,7 +4,7 @@ const Proxy = '/api/v1'
 
 class Ajax {
   getJobs() {
-    return axios.get(`${proxy}/jobs/list`)
+    return axios.get(`${Proxy}/jobs/list`)
   }
 }
 export default new Ajax()

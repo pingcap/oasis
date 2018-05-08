@@ -1,10 +1,19 @@
 <template>
   <div>
-    <el-table ref="singleTable" :data="data.list" highlight-current-row 
-    @current-change="handleCurrentChange" style="width: 100%">
-      <el-table-column v-for="(item, index) in data.prop" :key="index" 
+    <el-table ref="singleTable" :data="data.list" highlight-current-row style="width: 100%">
+      <el-table-column v-for="(item, index) in data.prop" :key="index"
       :prop="item" :label="data.label[index]">
       </el-table-column>
+      <el-table-column
+      fixed="right"
+      label="operation"
+      width="100">
+      <template slot-scope="scope">
+        <el-button @click="handleClick(scope.row)" type="text" size="small">
+          detail
+        </el-button>
+      </template>
+    </el-table-column>
     </el-table>
   </div>
 </template>
@@ -21,9 +30,8 @@
       setCurrent(row) {
         this.$refs.singleTable.setCurrentRow(row);
       },
-      handleCurrentChange(val) {
-        this.currentRow = val;
-        this.tableData.handleClick(val);
+      handleDetailClick(val) {
+          this.tableData.handleDetailClick(val);
       }
     }
   }
