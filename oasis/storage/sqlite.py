@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import os
 import sqlite3
+import datetime
 from oasis.storage.sql import SCHEMA
 from oasis.libs.log import logger
 
@@ -156,26 +157,26 @@ class Job(object):
        The id is primary key.
     """
     fields = ['id', 'data_source', 'models', 'timeout', 'slack_channel',
-              'model_instance_ids', 'status', 'api_models_config']
+              'model_instance_ids', 'status', 'api_models_config', 'start_time']
 
     def __init__(self, db):
         self.db = db
 
     def add(self, job):
+        now = datetime.datetime.now()
         stmt = self.db.execute([
             'INSERT INTO job (',
             '   data_source, models, timeout,',
             '   slack_channel, model_instance_ids,'
-            '   status, api_models_config)',
-            'VALUES (?, ?, ?, ?, ?, ?, ?);'],
+            '   status, api_models_config, start_time)',
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?);'],
             (str(job.get('data_source')), job.get('models'),
              job.get('timeout'), job.get('slack_channel'),
-             job.get('model_instance_ids'), job.get('status'), str(job.get('api_models_config')))
+             job.get('model_instance_ids'), job.get('status'),
+             str(job.get('api_models_config')), now)
         )
 
-        job['id'] = stmt.lastrowid
-
-        return job
+        return self.get(stmt.lastrowid)
 
     def update(self, job):
         self.db.execute([

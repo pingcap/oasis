@@ -20,3 +20,17 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# dashboard
+dashboard/node_modules/
+dashboard/dist/
+dashboard/npm-debug.log*
+dashboard/yarn-debug.log*
+dashboard/yarn-error.log*
+dashboard/package-lock.json
+
+# Editor directories and files
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
