@@ -4,11 +4,8 @@ from __future__ import absolute_import
 
 import os
 import sqlite3
-<<<<<<< HEAD
 import json
-=======
 import datetime
->>>>>>> master
 from oasis.storage.sql import SCHEMA
 from oasis.models.util import json_serial
 
