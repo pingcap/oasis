@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 import HomeView from '@/views/HomeView'
+import JobDetailView from '@/views/JobDetailView'
 
 Vue.use(Router)
 
@@ -9,7 +10,7 @@ const NotFoundView = Vue.component('NotFoundView', {
 })
 
 export default new Router({
-  // mode: 'history',
+  mode: 'history',
   routes: [
     { path: '/', redirect: '/home' },
     {
@@ -22,5 +23,10 @@ export default new Router({
       name: 'HomeView',
       component: HomeView
     },
+    {
+      path: '/detail',
+      name: 'JobDetailView',
+      component: JobDetailView
+    }
   ]
 })

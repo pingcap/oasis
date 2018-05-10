@@ -9,7 +9,7 @@
       label="operation"
       width="100">
       <template slot-scope="scope">
-        <el-button @click="handleClick(scope.row)" type="text" size="small">
+        <el-button @click="handleDetailClick(scope.row)" type="text" size="small">
           detail
         </el-button>
       </template>
