@@ -143,5 +143,12 @@ class OasisHandler(object):
             finally:
                 self.finish(data)
 
+    class ModelTemplatesListHandler(tornado.web.RequestHandler):
+        def get(self):
+            logger.info("list all model templates")
+            templates = manager.list_all_model_templates()
+
+            self.finish({"code": HTTP_OK, "message": "OK", "data": templates})
+
 
 

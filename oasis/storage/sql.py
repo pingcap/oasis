@@ -27,7 +27,8 @@ SCHEMA = '''
             slack_channel TEXT , 
             model_instance_ids TEXT , 
             status TEXT , 
-            api_models_config TEXT); 
+            api_models_config TEXT,
+            start_time TIME); 
 '''
 
 

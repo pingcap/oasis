@@ -110,6 +110,10 @@ class Manager(object):
 
             return job
 
+    def list_all_model_templates(self):
+        with self.lock:
+            return self.storage.list_model_templates()
+
     def close(self):
         logger.info("closing the server")
         with self.lock:

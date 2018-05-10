@@ -4,7 +4,11 @@ from __future__ import absolute_import
 
 import os
 import sqlite3
+<<<<<<< HEAD
 import json
+=======
+import datetime
+>>>>>>> master
 from oasis.storage.sql import SCHEMA
 from oasis.models.util import json_serial
 
@@ -158,12 +162,13 @@ class Job(object):
        The id is primary key.
     """
     fields = ['id', 'data_source', 'models', 'timeout', 'slack_channel',
-              'model_instance_ids', 'status', 'api_models_config']
+              'model_instance_ids', 'status', 'api_models_config', 'start_time']
 
     def __init__(self, db):
         self.db = db
 
     def add(self, job):
+        now = datetime.datetime.now()
         stmt = self.db.execute([
             'INSERT INTO job (',
             '   data_source, models, timeout,',
@@ -173,12 +178,10 @@ class Job(object):
             (str(json.dumps(job.get('data_source'), default=json_serial)), job.get('models'),
              job.get('timeout'), job.get('slack_channel'),
              job.get('model_instance_ids'), job.get('status'),
-             str(json.dumps(job.get('api_models_config'), default=json_serial)))
+             str(json.dumps(job.get('api_models_config'), default=json_serial)), now)
         )
 
-        job['id'] = stmt.lastrowid
-
-        return job
+        return self.get(stmt.lastrowid)
 
     def update(self, job):
         self.db.execute([
