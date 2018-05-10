@@ -3,7 +3,7 @@
 json_data='''
 {
     "data_source": {
-        "url": "http://40.125.162.12:34470"
+        "url": "http://40.125.162.12:39580"
     },
     "timeout": "24h",
     "models": [

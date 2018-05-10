@@ -4,8 +4,9 @@ from __future__ import absolute_import
 
 import os
 import sqlite3
+import json
 from oasis.storage.sql import SCHEMA
-from oasis.libs.log import logger
+from oasis.models.util import json_serial
 
 
 class SQLite(object):
@@ -48,7 +49,7 @@ class ModelTemplate(object):
 
     def add(self, m):
         self.db.execute('INSERT INTO model_template (name, config) VALUES (?, ?);',
-                        (m.get('name'), str(m.get('config'))))
+                        (m.get('name'), str(json.dumps(m.get('config'), default=json_serial))))
 
         return self.get(m.get('name'))
 
@@ -105,7 +106,7 @@ class ModelInstance(object):
             '   report, status)',
             'VALUES (?, ?, ?, ?);'],
             (m.get('model'), m.get('job_id'),
-             str(m.get('report')), m.get('status'))
+             str(json.dumps(m.get('report'), default=json_serial)), m.get('status'))
         )
 
         m['id'] = stmt.lastrowid
@@ -118,7 +119,8 @@ class ModelInstance(object):
             '   report = ?, status = ?',
             'WHERE id = ?;'],
             (m.get('model'), m.get('job_id'),
-             str(m.get('report')), m.get('status'), m.get('id'))
+             str(json.dumps(m.get('report'), default=json_serial)),
+             m.get('status'), m.get('id'))
         )
 
         return self.get(m.get('id'))
@@ -168,9 +170,10 @@ class Job(object):
             '   slack_channel, model_instance_ids,'
             '   status, api_models_config)',
             'VALUES (?, ?, ?, ?, ?, ?, ?);'],
-            (str(job.get('data_source')), job.get('models'),
+            (str(json.dumps(job.get('data_source'), default=json_serial)), job.get('models'),
              job.get('timeout'), job.get('slack_channel'),
-             job.get('model_instance_ids'), job.get('status'), str(job.get('api_models_config')))
+             job.get('model_instance_ids'), job.get('status'),
+             str(json.dumps(job.get('api_models_config'), default=json_serial)))
         )
 
         job['id'] = stmt.lastrowid
@@ -184,10 +187,10 @@ class Job(object):
             '   slack_channel = ?,model_instance_ids = ?,',
             '   status = ?, api_models_config = ?',
             'WHERE id = ?;'],
-            (str(job.get('data_source')), job.get('models'),
+            (str(json.dumps(job.get('data_source'), default=json_serial)), job.get('models'),
              job.get('timeout'), job.get('slack_channel'),
              job.get('model_instance_ids'), job.get('status'),
-             str(job.get('api_models_config')), job.get('id'))
+             str(json.dumps(job.get('api_models_config'), default=json_serial)), job.get('id'))
         )
         return self.get(job.get('id'))
 
