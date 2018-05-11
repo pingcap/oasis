@@ -5,7 +5,6 @@
 # Distribution / packaging
 .Python
 env/
-build/
 develop-eggs/
 dist/
 data/
@@ -20,6 +19,7 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+package-lock.json
 
 # dashboard
 dashboard/node_modules/

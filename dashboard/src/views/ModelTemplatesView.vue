@@ -17,7 +17,7 @@
         :title="dialogTitle"
         :visible.sync="dialogVisible"
         width="30%">
-        <span>这是一段信息</span>
+        <vue-json-pretty :data="detail"></vue-json-pretty>
         <span slot="footer" class="dialog-footer">
       </span>
       </el-dialog>
@@ -29,10 +29,11 @@
 
 import ajax from '../request/index'
 import myTable from '../components/Table'
+import VueJsonPretty from 'vue-json-pretty'
 
 export default {
   name: 'model_templates',
-  components: {myTable},
+  components: {myTable, VueJsonPretty},
   data() {
     return {
       modelCount: 0,
@@ -50,6 +51,9 @@ export default {
 
           this.dialogVisible = true;
           this.dialogTitle = row.name;
+          // row.config = JSON.parse(JSON.stringify(row.config));
+          // console.log(row.config);
+          row.config =  eval("(" + row.config + ')');
           this.detail = row;
         }.bind(this)
       }

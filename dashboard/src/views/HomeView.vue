@@ -103,7 +103,7 @@ export default {
               confirmButtonText: 'OK',
               cancelButtonText: 'Cancel',
               type: 'warning'
-            }).then(() => {
+              }).then(() => {
               ajax.stopJobByID(row.id).then((result) => {
                 if (result.data.code != 200) {
                 this.$notify({
@@ -243,12 +243,12 @@ export default {
             duration: 0
           });
       });
-    },
-
-    methods: {
-      confirmStopJob: function (row) {
-              },
     }
+
+    // methods: {
+    //   confirmStopJob: function (row) {
+    //           },
+    // }
   }
 }
 </script>
