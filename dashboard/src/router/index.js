@@ -2,6 +2,7 @@ import Vue from 'vue'
 import Router from 'vue-router'
 import HomeView from '@/views/HomeView'
 import JobDetailView from '@/views/JobDetailView'
+import ModelTemplatesView from '@/views/ModelTemplatesView'
 
 Vue.use(Router)
 
@@ -27,6 +28,11 @@ export default new Router({
       path: '/detail',
       name: 'JobDetailView',
       component: JobDetailView
+    },
+    {
+      path: '/model_templates',
+      name: 'ModelTemplatesView',
+      component: ModelTemplatesView
     }
   ]
 })

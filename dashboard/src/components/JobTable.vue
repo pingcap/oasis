@@ -12,6 +12,9 @@
         <el-button @click="handleDetailClick(scope.row)" type="text" size="small">
           detail
         </el-button>
+        <el-button @click="handleStopClick(scope.row)" type="text" size="small">
+         stop
+        </el-button>
       </template>
     </el-table-column>
     </el-table>
@@ -20,7 +23,7 @@
 <script>
   import ajax from '../request/index'
   export default {
-    name: 'sh-table',
+    name: 'job-table',
     props: ['tableData'],
     data() {
       return {
@@ -34,6 +37,9 @@
       handleDetailClick(row) {
         this.tableData.handleDetailClick(row);
       },
+      handleStopClick(row) {
+        this.tableData.handleStopClick(row);
+      }
     }
   }
 

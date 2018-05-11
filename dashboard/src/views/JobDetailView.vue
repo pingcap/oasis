@@ -104,6 +104,7 @@
               type: 'warning',
               message: "Job ID is required !!"
           });
+          return;
         }
 
         ajax.getJobByID(this.jobID).then((result) => {
@@ -115,7 +116,7 @@
                message: data.message,
                duration: 0
              });
-             return
+             return;
           }
           this.isShow = true
           this.jobDetail = data.data

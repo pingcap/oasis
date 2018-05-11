@@ -10,6 +10,7 @@
     <el-tabs v-model="activeIndex" type="card" @tab-click="tabClick">
       <el-tab-pane label="Job View" name="home"></el-tab-pane>
       <el-tab-pane label="Job Detail" name="detail"></el-tab-pane>
+      <el-tab-pane label="Model Templates View" name="model_templates"></el-tab-pane>
     </el-tabs>
   </div>
 </template>

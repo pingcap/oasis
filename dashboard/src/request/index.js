@@ -14,6 +14,18 @@ class Ajax {
   getModelTemplates() {
     return axios.get(`${Proxy}/model_templates/list`)
   }
+
+  getMetrics() {
+    return axios.get(`${Proxy}/metrics/list`)
+  }
+
+  setJob(data) {
+    return axios.post(`${Proxy}/job/new`, data)
+  }
+
+  stopJobByID(id) {
+    return axios.get(`${Proxy}/job/${id}/stop`)
+  }
 }
 
 export default new Ajax()

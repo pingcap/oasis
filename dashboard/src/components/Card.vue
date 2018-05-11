@@ -6,7 +6,7 @@
 </template>
 
 <script>
-import myTable from  './table'
+import myTable from './JobTable'
 import ajax from '../request/index'
 
 export default {
@@ -20,13 +20,13 @@ export default {
         prop:['name', 'status','start_time'],
         list: [{
           id:'',
-          name:'', 
-          status:'', 
+          name:'',
+          status:'',
           start_time:''
         }]
       }
     }
-  }, 
+  },
   created() {
     ajax.getMission().then((result)=> {
       this.tableData.list = result.data.list
