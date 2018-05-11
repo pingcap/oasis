@@ -5,6 +5,7 @@ json_data='''
     "data_source": {
         "url": "http://40.125.162.12:39580"
     },
+    "name": "text-x0",
     "timeout": "24h",
     "models": [
         {

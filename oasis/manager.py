@@ -7,6 +7,7 @@ from oasis.storage import new_sqlite_storage
 from oasis.libs.log import logger
 from oasis.controller import Controller
 from oasis.models import Models
+from oasis.datasource.prometheus import Metrics
 from oasis.job import (
     JOB_PENDING,
     JOB_RUNNING
@@ -39,7 +40,7 @@ class Manager(object):
                 "config": str(cfg)
             })
 
-    def new_job(self, data_source, models, slack_channel, timeout):
+    def new_job(self, name, data_source, models, slack_channel, timeout):
         with self.lock:
             models_name = []
             for model in models:
@@ -48,6 +49,7 @@ class Manager(object):
                 models_name.append(model.get('name'))
 
             job = self.storage.set_job({
+                'name': name,
                 'data_source': data_source,
                 'models': ',' .join(models_name),
                 'timeout': timeout,
@@ -69,9 +71,18 @@ class Manager(object):
 
             self.controller.stop_job(job)
 
+    def stop_job_by_name(self, name):
+        with self.lock:
+            job = self.storage.get_job_by_name(name)
+
+            if job is None:
+                raise JobNotExistsException
+
+            self.controller.stop_job(job)
+
     def list_all_job(self):
         with self.lock:
-            return self.storage.list_jobs()
+            return sorted(self.storage.list_jobs(), key=lambda j: j['id'], reverse=True)
 
     def list_running_job(self):
         with self.lock:
@@ -113,6 +124,17 @@ class Manager(object):
     def list_all_model_templates(self):
         with self.lock:
             return self.storage.list_model_templates()
+
+    def list_all_metrics(self):
+        with self.lock:
+            metrics = []
+            for metric, query in Metrics.items():
+                metrics.append({
+                    "name": metric,
+                    "query": query
+                })
+
+            return metrics
 
     def close(self):
         logger.info("closing the server")

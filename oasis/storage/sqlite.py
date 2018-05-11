@@ -150,7 +150,7 @@ class Job(object):
     """Hopefully DB-independend SQL to store, modify and retrieve all
        job actions.  Here's a short scheme overview:
 
-           | id     | data_source  | models         | ...... | status |
+           | id     | name         | models         | ...... | status |
            +--------+--------------+----------------+----------+---------+
            | 0      | xxxxxxx      | iforest,rules  | ...... | running |
            | 1      | xxxxxxxx     | iforest        | ...... | running |
@@ -158,7 +158,7 @@ class Job(object):
 
        The id is primary key.
     """
-    fields = ['id', 'data_source', 'models', 'timeout', 'slack_channel',
+    fields = ['id', 'name', 'data_source', 'models', 'timeout', 'slack_channel',
               'model_instance_ids', 'status', 'api_models_config', 'start_time']
 
     def __init__(self, db):
@@ -168,11 +168,12 @@ class Job(object):
         now = datetime.datetime.now()
         stmt = self.db.execute([
             'INSERT INTO job (',
-            '   data_source, models, timeout,',
+            '   name, data_source, models, timeout,',
             '   slack_channel, model_instance_ids,'
-            '   status, api_models_config)',
-            'VALUES (?, ?, ?, ?, ?, ?, ?);'],
-            (str(json.dumps(job.get('data_source'), default=json_serial)), job.get('models'),
+            '   status, api_models_config, start_time)',
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);'],
+            (job.get('name'), str(json.dumps(job.get('data_source'), default=json_serial)),
+             job.get('models'),
              job.get('timeout'), job.get('slack_channel'),
              job.get('model_instance_ids'), job.get('status'),
              str(json.dumps(job.get('api_models_config'), default=json_serial)), now)
@@ -196,6 +197,14 @@ class Job(object):
 
     def get(self, id):
         data = self.db.execute('SELECT * FROM job WHERE id = ?;', (id, )).fetchone()
+
+        if data is not None:
+            return dict(zip(self.fields, data))
+
+        return None
+
+    def get_by_name(self, name):
+        data = self.db.execute('SELECT * FROM job WHERE name = ?;', (name, )).fetchone()
 
         if data is not None:
             return dict(zip(self.fields, data))

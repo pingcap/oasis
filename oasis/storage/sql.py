@@ -21,6 +21,7 @@ SCHEMA = '''
       
       CREATE TABLE IF NOT EXISTS job (
             id INTEGER PRIMARY KEY , 
+            name TEXT UNIQUE ,
             data_source TEXT ,  
             models TEXT , 
             timeout TEXT , 
@@ -29,6 +30,7 @@ SCHEMA = '''
             status TEXT , 
             api_models_config TEXT,
             start_time TIME); 
+      CREATE INDEX IF NOT EXISTS idx_job_name ON job(name);
 '''
 
 
