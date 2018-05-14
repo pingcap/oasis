@@ -112,7 +112,7 @@ class Controller(object):
             logger.exception("Exception Logged")
 
     def stop_job_handler(self, job):
-        logger.info("stop job: {job_id}".format(job_id=job.id))
+        logger.info("stop job: {job_id}".format(job_id=job.get('id')))
         job_instance = self.jobs.get(job.get('id'))
 
         try:
