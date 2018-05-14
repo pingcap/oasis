@@ -90,30 +90,41 @@ class Controller(object):
 
     def start_job_handler(self, job):
         logger.info("run job: {job}".format(job=job))
+
         if job.get('id') in self.jobs.keys():
             logger.warn("the job is running")
             return
-
         job_instance = Job(self.storage, job)
-        if not job_instance.valid():
-            logger.error("the job is invalid")
-            return
 
-        self.jobs[job.get('id')] = job_instance
+        try:
+            if not job_instance.valid():
+                logger.error("the job is invalid")
+                job_instance.update_status(JOB_ERROR)
+                return
 
-        t = Thread(target=job_instance.run)
-        t.start()
+            self.jobs[job.get('id')] = job_instance
+
+            t = Thread(target=job_instance.run)
+            t.start()
+        except Exception as e:
+            logger.error("start job: {job} error: {err}"
+                         .format(job=job, err=str(e)))
+            logger.exception("Exception Logged")
 
     def stop_job_handler(self, job):
-        logger.info("stop job: {job}".format(job=job))
-
+        logger.info("stop job: {job_id}".format(job_id=job.get('id')))
         job_instance = self.jobs.get(job.get('id'))
 
-        if job_instance is None:
-            raise JobNotRunningException(job)
+        try:
+            if job_instance is None:
+                raise JobNotRunningException(job)
 
-        t = Thread(target=job_instance.close)
-        t.start()
+            t = Thread(target=job_instance.close)
+            t.start()
+        except Exception as e:
+            logger.error("stop job: {job} error: {err}"
+                         .format(job=job, err=str(e)))
+            logger.exception("Exception Logged")
 
     def clean(self):
         delete_ids = []

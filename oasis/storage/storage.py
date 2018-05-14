@@ -110,6 +110,10 @@ class Storage(object):
         with self.lock:
             return self.jobs.get(int(id))
 
+    def get_job_by_name(self, name):
+        with self.lock:
+            return self.jobs.get_by_name(name)
+
     def list_jobs(self):
         with self.lock:
             jobs = []

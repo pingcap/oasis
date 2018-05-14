@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 import urlparse
+import ast
 from threading import Thread, Timer, Lock, Event
 from pytimeparse.timeparse import timeparse
 from oasis.datasource import DataSource
@@ -29,9 +30,10 @@ class Job(object):
     def __init__(self, store, data):
         self.store = store
         self.id = data.get('id')
-        self.data_source = DataSource(data.get('data_source')['url'])
+        self.name = data.get('name')
+        self.data_source = DataSource(ast.literal_eval(data.get('data_source'))['url'])
         self.models_name = data.get('models').strip().split(',')
-        self.api_models_config = data.get('api_models_config')
+        self.api_models_config = ast.literal_eval(data.get('api_models_config'))
         self.slack_channel = data.get('slack_channel')
         self.timeout = data.get('timeout')
         self.status = data.get('status')
@@ -45,6 +47,7 @@ class Job(object):
     def to_dict(self):
         return {
             "id": self.id,
+            "name": self.name,
             "data_source": self.data_source.to_dict(),
             "status": self.status,
             "api_models_config": self.api_models_config,
@@ -58,6 +61,7 @@ class Job(object):
 
         self.store.set_job({
             'id': self.id,
+            'name': self.name,
             'data_source': self.data_source.to_dict(),
             'models': ','.join(self.models_name),
             'slack_channel': self.slack_channel,
@@ -126,6 +130,9 @@ class Job(object):
             if self.id == "":
                 return False
 
+            if self.name == "":
+                return False
+
             if self.slack_channel is None \
                     or self.slack_channel == "":
                 return False
@@ -142,6 +149,11 @@ class Job(object):
                     return False
 
             return True
+
+    def update_status(self, status):
+        with self.lock:
+            self.status = status
+            self.save_job()
 
     def timeout_action(self):
         logger.info("[job:{job}] finish"

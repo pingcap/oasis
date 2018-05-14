@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 
 import collections
+from datetime import date, datetime
 
 JOB_ID_LEN = 8
 EPS = 0.00001
@@ -35,4 +36,12 @@ def get_object(dict_data):
     @return :class:Struct
     """
     return Struct(dict_data)
+
+
+def json_serial(obj):
+    """JSON serializer for objects not serializable by default json code"""
+
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    raise TypeError ("Type %s not serializable" % type(obj))
 

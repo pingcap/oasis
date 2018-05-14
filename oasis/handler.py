@@ -40,7 +40,7 @@ class OasisHandler(object):
             timeout = data.get("timeout", DEFAULT_JOB_TIMEOUT)
 
             try:
-                job = manager.new_job(data["data_source"], data["models"],
+                job = manager.new_job(data["name"], data["data_source"], data["models"],
                                       slack_channel, timeout)
             except KeyError as e:
                 logger.error("add new job failed: miss args %s" % e.args[0])
@@ -150,5 +150,12 @@ class OasisHandler(object):
 
             self.finish({"code": HTTP_OK, "message": "OK", "data": templates})
 
+    class MetricsListHandler(tornado.web.RequestHandler):
+        def get(self):
+            logger.info("list all metrics")
+
+            metrics = manager.list_all_metrics()
+
+            self.finish({"code": HTTP_OK, "message": "OK", "data": metrics})
 
 

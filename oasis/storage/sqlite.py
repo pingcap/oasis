@@ -4,9 +4,10 @@ from __future__ import absolute_import
 
 import os
 import sqlite3
+import json
 import datetime
 from oasis.storage.sql import SCHEMA
-from oasis.libs.log import logger
+from oasis.models.util import json_serial
 
 
 class SQLite(object):
@@ -49,7 +50,7 @@ class ModelTemplate(object):
 
     def add(self, m):
         self.db.execute('INSERT INTO model_template (name, config) VALUES (?, ?);',
-                        (m.get('name'), str(m.get('config'))))
+                        (m.get('name'), str(json.dumps(m.get('config'), default=json_serial))))
 
         return self.get(m.get('name'))
 
@@ -106,7 +107,7 @@ class ModelInstance(object):
             '   report, status)',
             'VALUES (?, ?, ?, ?);'],
             (m.get('model'), m.get('job_id'),
-             str(m.get('report')), m.get('status'))
+             str(json.dumps(m.get('report'), default=json_serial)), m.get('status'))
         )
 
         m['id'] = stmt.lastrowid
@@ -119,7 +120,8 @@ class ModelInstance(object):
             '   report = ?, status = ?',
             'WHERE id = ?;'],
             (m.get('model'), m.get('job_id'),
-             str(m.get('report')), m.get('status'), m.get('id'))
+             str(json.dumps(m.get('report'), default=json_serial)),
+             m.get('status'), m.get('id'))
         )
 
         return self.get(m.get('id'))
@@ -148,7 +150,7 @@ class Job(object):
     """Hopefully DB-independend SQL to store, modify and retrieve all
        job actions.  Here's a short scheme overview:
 
-           | id     | data_source  | models         | ...... | status |
+           | id     | name         | models         | ...... | status |
            +--------+--------------+----------------+----------+---------+
            | 0      | xxxxxxx      | iforest,rules  | ...... | running |
            | 1      | xxxxxxxx     | iforest        | ...... | running |
@@ -156,7 +158,7 @@ class Job(object):
 
        The id is primary key.
     """
-    fields = ['id', 'data_source', 'models', 'timeout', 'slack_channel',
+    fields = ['id', 'name', 'data_source', 'models', 'timeout', 'slack_channel',
               'model_instance_ids', 'status', 'api_models_config', 'start_time']
 
     def __init__(self, db):
@@ -166,14 +168,15 @@ class Job(object):
         now = datetime.datetime.now()
         stmt = self.db.execute([
             'INSERT INTO job (',
-            '   data_source, models, timeout,',
+            '   name, data_source, models, timeout,',
             '   slack_channel, model_instance_ids,'
             '   status, api_models_config, start_time)',
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?);'],
-            (str(job.get('data_source')), job.get('models'),
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);'],
+            (job.get('name'), str(json.dumps(job.get('data_source'), default=json_serial)),
+             job.get('models'),
              job.get('timeout'), job.get('slack_channel'),
              job.get('model_instance_ids'), job.get('status'),
-             str(job.get('api_models_config')), now)
+             str(json.dumps(job.get('api_models_config'), default=json_serial)), now)
         )
 
         return self.get(stmt.lastrowid)
@@ -185,15 +188,23 @@ class Job(object):
             '   slack_channel = ?,model_instance_ids = ?,',
             '   status = ?, api_models_config = ?',
             'WHERE id = ?;'],
-            (str(job.get('data_source')), job.get('models'),
+            (str(json.dumps(job.get('data_source'), default=json_serial)), job.get('models'),
              job.get('timeout'), job.get('slack_channel'),
              job.get('model_instance_ids'), job.get('status'),
-             str(job.get('api_models_config')), job.get('id'))
+             str(json.dumps(job.get('api_models_config'), default=json_serial)), job.get('id'))
         )
         return self.get(job.get('id'))
 
     def get(self, id):
         data = self.db.execute('SELECT * FROM job WHERE id = ?;', (id, )).fetchone()
+
+        if data is not None:
+            return dict(zip(self.fields, data))
+
+        return None
+
+    def get_by_name(self, name):
+        data = self.db.execute('SELECT * FROM job WHERE name = ?;', (name, )).fetchone()
 
         if data is not None:
             return dict(zip(self.fields, data))
