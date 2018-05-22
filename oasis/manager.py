@@ -80,9 +80,18 @@ class Manager(object):
 
             self.controller.stop_job(job)
 
-    def list_all_job(self):
+    def list_jobs(self, offset, size):
         with self.lock:
-            return sorted(self.storage.list_jobs(), key=lambda j: j['id'], reverse=True)
+            jobs = sorted(self.storage.list_jobs(), key=lambda j: j['id'], reverse=True)
+
+            jobs_len = len(jobs)
+            if offset > jobs_len:
+                return []
+
+            if offset+size > jobs_len:
+                return jobs[offset:]
+            else:
+                return jobs[offset:offset+size]
 
     def list_running_job(self):
         with self.lock:
@@ -121,11 +130,20 @@ class Manager(object):
 
             return job
 
-    def list_all_model_templates(self):
+    def list_model_templates(self, offset, size):
         with self.lock:
-            return self.storage.list_model_templates()
+            templates = self.storage.list_model_templates()
 
-    def list_all_metrics(self):
+            templates_len = len(templates)
+            if offset > templates_len: 
+                return []
+            
+            if offset+size > templates_len: 
+                return templates[offset:]
+            else: 
+                return templates[offset:offset+size]
+
+    def list_metrics(self, offset, size):
         with self.lock:
             metrics = []
             for metric, query in Metrics.items():
@@ -134,7 +152,14 @@ class Manager(object):
                     "query": query
                 })
 
-            return metrics
+            metrics_len = len(metrics)
+            if offset > metrics_len: 
+                return []
+            
+            if offset+size > metrics_len: 
+                return metrics[offset:]
+            else:
+                return metrics[offset:offset+size]
 
     def close(self):
         logger.info("closing the server")
