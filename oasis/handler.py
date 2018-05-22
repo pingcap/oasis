@@ -107,9 +107,25 @@ class OasisHandler(object):
 
     class JobListHandler(tornado.web.RequestHandler):
         def get(self):
-            logger.info("list all jobs")
-            jobs = manager.list_all_job()
-            self.finish({"code": HTTP_OK, "message": "OK", "data": jobs})
+            size = self.get_argument('size', 10)
+            offset = self.get_argument('offset', 0)
+
+            logger.info("list jobs offset {offset} size {size}"
+                        .format(offset=offset, size=size))
+
+            try: 
+                jobs = manager.list_jobs(offset=int(offset), size=int(size))
+            except Exception as e: 
+                logger.info("list jobs offset {offset} size {size}, failed: {err}"
+                            .format(offset=offset, size=size, err=str(e)))
+                logger.exception("Exception Logged")
+                data = {"code": HTTP_FAIL,
+                        "message": "list jobs offset {offset} size {size}, failed: {err}"
+                            .format(offset=offset, size=size, err=str(e))}
+            else:
+                data = {"code": HTTP_OK, "message": "OK", "data": jobs} 
+            finally: 
+                self.finish(data)
 
     class JobDetailHandler(tornado.web.RequestHandler):
         def get(self, job_id):
@@ -145,17 +161,46 @@ class OasisHandler(object):
 
     class ModelTemplatesListHandler(tornado.web.RequestHandler):
         def get(self):
-            logger.info("list all model templates")
-            templates = manager.list_all_model_templates()
+            offset = self.get_argument("offset", 0)
+            size = self.get_argument("size", 10)
 
-            self.finish({"code": HTTP_OK, "message": "OK", "data": templates})
+            logger.info("list model templates offset {offset} size {size}"
+                    .format(offset=offset, size=size))
+
+            try: 
+                templates = manager.list_model_templates(offset=int(offset), size=int(size))
+            except Exception as e: 
+                logger.info("list model templates offset {offset} size {size}, failed: {err}"
+                            .format(offset=offset, size=size, err=str(e)))
+                logger.exception("Exception Logged")
+                data = {"code": HTTP_FAIL,
+                        "message": "list model templates offset {offset} size {size}, failed: {err}"
+                            .format(offset=offset, size=size, err=str(e))}
+            else: 
+                data = {"code": HTTP_OK, "message": "OK", "data": templates} 
+            finally: 
+                self.finish(data)
 
     class MetricsListHandler(tornado.web.RequestHandler):
         def get(self):
-            logger.info("list all metrics")
+            offset = self.get_argument("offset", 0)
+            size = self.get_argument("size", 10)
 
-            metrics = manager.list_all_metrics()
+            logger.info("list metrics offset {offset} size {size}"
+                    .format(offset=offset, size=size))
 
-            self.finish({"code": HTTP_OK, "message": "OK", "data": metrics})
+            try: 
+                metrics = manager.list_metrics(offset=int(offset), size=int(size))
+            except Exception as e: 
+                logger.info("list metrics offset {offset} size {size}, failed: {err}"
+                            .format(offset=offset, size=size, err=str(e)))
+                logger.exception("Exception Logged")
+                data = {"code": HTTP_FAIL,
+                        "message": "list metrics offset {offset} size {size}, failed: {err}"
+                            .format(offset=offset, size=size, err=str(e))}
+            else: 
+                data = {"code": HTTP_OK, "message": "OK", "data": metrics}
+            finally: 
+                self.finish(data)
 
 
