@@ -56,7 +56,8 @@
                 </el-tab-pane>
                 <el-tab-pane label="Models">
                   <div class="me-pane">
-
+                    <!-- TODO: extract into separate componennts -->
+                    <span v-for="model in jobDetail.model_instances">{{model.id}} - {{model.model}}</span>
                   </div>
                 </el-tab-pane>
               </el-tabs>
@@ -65,12 +66,16 @@
         </el-collapse-item>
       </el-collapse>
     </div>
+    <div id="timeline-id"></div>
   </div>
 </template>
 
 <script>
   import ajax from '../request/index'
   import VueJsonPretty from 'vue-json-pretty'
+import _ from 'lodash'
+var DataSet = require('vis/lib/DataSet');
+var Timeline = require('vis/lib/timeline/Timeline');
 
   export default {
     components: {
@@ -97,6 +102,19 @@
       this.clickSearchJob()
     },
 
+    mounted: function () {
+      const self = this
+      this.$nextTick(()=> {
+        // Code that will run only after the
+        // entire view has been rendered
+          self.container = document.getElementById('timeline-id')
+          if(self.timelineData) {
+            const {items, groups} = self.timelineData
+            new Timeline(self.container, items, groups, {});
+          }
+      })
+    },
+
     methods: {
       clickSearchJob: function () {
         if(this.jobID == undefined || this.jobID == null || this.jobID == "") {
@@ -120,6 +138,35 @@
           }
           this.isShow = true
           this.jobDetail = data.data
+
+
+          // TODO: model_instances report should be json
+          // TODO: report should be a specfific interface
+          const models = this.jobDetail.model_instances
+          models.forEach((i, idx)=>{
+            models[idx].report = JSON.parse(models[idx].report)
+          })
+
+          var groups = _.keys(models[0].report.metrics_report).map(m=>{
+            return {
+              id: m,
+              content: m
+            }
+          })
+          var items = _.flatten(_.values(models[0].report.metrics_report)).map(i=>{
+            return {
+              group: i.metric,
+              className: i.is_match ? 'green' : 'red',
+              title: JSON.stringify(i.predict_data),
+              start: new Date(i.time),
+            }
+          })
+
+          this.timelineData = [items, groups]
+          if(this.container) {
+            new Timeline(this.container, items, groups, {});
+          }
+
         }).catch((resp) => {
           this.$notify({
               title: "error",
@@ -146,4 +193,11 @@
     margin-top: 1rem;
     margin-left: 1rem;
   }
+
+.vis-item.green {
+  background-color: green;
+}
+.vis-item.red {
+  background-color: red;
+}
 </style>
