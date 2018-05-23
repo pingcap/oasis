@@ -94,6 +94,7 @@ class Rules(Model):
                 if is_match:
                     logger.info("{log_prefix}[metric:{metric}] predict OK"
                                 .format(log_prefix=self.log_prefix, metric=metric))
+                    report["is_match"] = True
                 else:
                     report["is_match"] = False
                     report["not_match_rule"] = not_match_rule
