@@ -3,8 +3,8 @@ import axios from 'axios'
 const Proxy = '/api/v1'
 
 class Ajax {
-  getJobs() {
-    return axios.get(`${Proxy}/jobs/list`)
+  getJobs(offset, size) {
+    return axios.get(`${Proxy}/jobs/list?offset=${offset}&size=${size}`)
   }
 
   getJobByID(id) {
