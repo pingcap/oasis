@@ -82,10 +82,7 @@ class Manager(object):
 
     def get_jobs_len(self):
         with self.lock:
-            jobs = sorted(self.storage.list_jobs(), key=lambda j: j['id'], reverse=True)
-            jobs_len = len(jobs)
-
-            return jobs_len
+            return len(sorted(self.storage.list_jobs(), key=lambda j: j['id'], reverse=True))
 
     def list_jobs(self, offset, size):
         with self.lock:
