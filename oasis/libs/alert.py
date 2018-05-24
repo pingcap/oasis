@@ -18,7 +18,7 @@ def send_to_slack(message, channel=DEFAULT_CHANNEL):
             "chat.postMessage",
             channel=channel,
             text=message,
-            username="metrics_bot",
+            username="oasis_bot",
             timeout=5,
         )
     except Exception as e:
