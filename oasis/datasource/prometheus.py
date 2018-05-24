@@ -12,15 +12,27 @@ from oasis.datasource.data_model import DataModel
 QUERY_API = "/api/v1/query"
 RANGE_QUERY_API = "/api/v1/query_range"
 Metrics = {
-    "qps": "sum(rate(tidb_server_query_total[1m])) "
-           "by (status)",
+    "qps": "sum(rate(tidb_server_query_total[1m])) by (status)",
     "80_latency": "histogram_quantile(0.80, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))",
     "95_latency": "histogram_quantile(0.95, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))",
     "99_latency": "histogram_quantile(0.99, sum(rate(tidb_server_handle_query_duration_seconds_bucket[1m])) by (le))",
     "connection_count": "sum(tidb_server_connections)",
+    "ticlient_region_error": "sum(rate(tidb_tikvclient_region_err_total[1m]))",
+    "pd_request_duration": "sum(rate(tikv_pd_request_duration_seconds_sum[1m])) / sum(rate(tikv_pd_request_duration_seconds_count[1m]))", 
+    "lock_resolve_qps": "sum(rate(tidb_tikvclient_lock_resolver_actions_total[1m]))", 
     "95_ddl_second": "histogram_quantile(0.95, sum(rate(tidb_ddl_handle_job_duration_seconds_bucket[1m])) by (le))",
     "server_is_busy": "sum(rate(tikv_scheduler_too_busy_total[1m]))",
-    "channel_full": "sum(rate(tikv_channel_full_total[1m]))"
+    "channel_full": "sum(rate(tikv_channel_full_total[1m]))", 
+    "raftstore_error": "sum(rate(tikv_storage_engine_async_request_total{status!~'success|all'}[1m]))", 
+    "coprocessor_error": "sum(rate(tikv_grpc_msg_fail_total[1m]))", 
+    "PD_cluster_lost_connect_tikv_nums": "sum(pd_cluster_status{type='store_disconnected_count'})", 
+    "PD_leader_change": "count(changes(pd_server_tso{type='save'}[10m]) > 0)", 
+    "PD_miss_peer_region_count": "sum( pd_regions_status{type='miss_peer_region_count'} )", 
+    "PD_server_is_down": "probe_success{group='pd'}", 
+    "TiDB_ddl_waiting_jobs": "sum(tidb_ddl_waiting_jobs)", 
+    "TiDB_schema_error": "increase(tidb_session_schema_lease_error_total{type='outdated'}[15m])", 
+    "TiDB_server_event_error": "increase(tidb_server_server_event{type=~'server_start|server_hang'}[15m])", 
+    "TiKV_write_stall": "delta( tikv_engine_write_stall[10m])" 
 }
 
 
