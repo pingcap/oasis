@@ -8,15 +8,10 @@ from oasis.libs.log import logger
 from oasis.controller import Controller
 from oasis.models import Models
 from oasis.datasource.prometheus import Metrics
-from oasis.job import (
-    JOB_PENDING,
-    JOB_RUNNING
-)
+from oasis.job import (JOB_PENDING, JOB_RUNNING)
 
-from oasis.libs.iexceptions import (
-    JobNotExistsException,
-    ModelNotSupportException
-)
+from oasis.libs.iexceptions import (JobNotExistsException,
+                                    ModelNotSupportException)
 
 MODELS_PATH = ""
 
@@ -35,10 +30,7 @@ class Manager(object):
 
         for name, model in Models.items():
             cfg = model.get_model_template(name, MODELS_PATH)
-            self.storage.set_model_template({
-                "name": name,
-                "config": str(cfg)
-            })
+            self.storage.set_model_template({"name": name, "config": str(cfg)})
 
     def new_job(self, name, data_source, models, slack_channel, timeout):
         with self.lock:
@@ -51,7 +43,7 @@ class Manager(object):
             job = self.storage.set_job({
                 'name': name,
                 'data_source': data_source,
-                'models': ',' .join(models_name),
+                'models': ','.join(models_name),
                 'timeout': timeout,
                 'slack_channel': slack_channel,
                 'status': JOB_PENDING,
@@ -82,20 +74,25 @@ class Manager(object):
 
     def get_jobs_len(self):
         with self.lock:
-            return len(sorted(self.storage.list_jobs(), key=lambda j: j['id'], reverse=True))
+            return len(
+                sorted(
+                    self.storage.list_jobs(),
+                    key=lambda j: j['id'],
+                    reverse=True))
 
     def list_jobs(self, offset, size):
         with self.lock:
-            jobs = sorted(self.storage.list_jobs(), key=lambda j: j['id'], reverse=True)
+            jobs = sorted(
+                self.storage.list_jobs(), key=lambda j: j['id'], reverse=True)
 
             jobs_len = len(jobs)
             if offset > jobs_len:
                 return []
 
-            if offset+size > jobs_len:
+            if offset + size > jobs_len:
                 return jobs[offset:]
             else:
-                return jobs[offset:offset+size]
+                return jobs[offset:offset + size]
 
     def list_running_job(self):
         with self.lock:
@@ -142,28 +139,25 @@ class Manager(object):
             if offset > templates_len:
                 return []
 
-            if offset+size > templates_len:
+            if offset + size > templates_len:
                 return templates[offset:]
             else:
-                return templates[offset:offset+size]
+                return templates[offset:offset + size]
 
     def list_metrics(self, offset, size):
         with self.lock:
             metrics = []
             for metric, query in Metrics.items():
-                metrics.append({
-                    "name": metric,
-                    "query": query
-                })
+                metrics.append({"name": metric, "query": query})
 
             metrics_len = len(metrics)
             if offset > metrics_len:
                 return []
 
-            if offset+size > metrics_len:
+            if offset + size > metrics_len:
                 return metrics[offset:]
             else:
-                return metrics[offset:offset+size]
+                return metrics[offset:offset + size]
 
     def close(self):
         logger.info("closing the server")

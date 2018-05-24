@@ -32,5 +32,3 @@ SCHEMA = '''
             start_time TIME); 
       CREATE INDEX IF NOT EXISTS idx_job_name ON job(name);
 '''
-
-

@@ -11,12 +11,7 @@ from oasis.libs.iexceptions import (
     TaskTypeNotSupportedException,
     JobNotRunningException,
 )
-from oasis.job import (
-    Job,
-    JOB_ERROR,
-    JOB_FINISHED,
-    JOB_STOPPED
-)
+from oasis.job import (Job, JOB_ERROR, JOB_FINISHED, JOB_STOPPED)
 
 PENDING_SIZE_LIMIT = 16
 RUNNING_SIZE_LIMIT = 8
@@ -43,7 +38,8 @@ class Controller(object):
         try:
             self.new_task(Task(START_JOB, job))
         except Exception as e:
-            logger.error("add new job: {job} failed: {err}".format(job=job, err=str(e)))
+            logger.error("add new job: {job} failed: {err}".format(
+                job=job, err=str(e)))
             raise NewJobException(job, str(e))
 
     def stop_job(self, job):
@@ -68,12 +64,13 @@ class Controller(object):
         self._exit = True
         self.event.set()
 
-        for job_id, job in self.jobs.items():
-            job.close()
+        for job_id in self.jobs:
+            self.jobs[job_id].close()
 
     def schedule_task(self):
         if len(self.jobs) >= RUNNING_SIZE_LIMIT:
-            logger.warn("the number of tasks allowed to run exceeded the limit.")
+            logger.warn(
+                "the number of tasks allowed to run exceeded the limit.")
             return
         try:
             task = self.queue.get_nowait()
@@ -107,8 +104,8 @@ class Controller(object):
             t = Thread(target=job_instance.run)
             t.start()
         except Exception as e:
-            logger.error("start job: {job} error: {err}"
-                         .format(job=job, err=str(e)))
+            logger.error("start job: {job} error: {err}".format(
+                job=job, err=str(e)))
             logger.exception("Exception Logged")
 
     def stop_job_handler(self, job):
@@ -122,8 +119,8 @@ class Controller(object):
             t = Thread(target=job_instance.close)
             t.start()
         except Exception as e:
-            logger.error("stop job: {job} error: {err}"
-                         .format(job=job, err=str(e)))
+            logger.error("stop job: {job} error: {err}".format(
+                job=job, err=str(e)))
             logger.exception("Exception Logged")
 
     def clean(self):
@@ -146,8 +143,3 @@ class Task(object):
     def __init__(self, typ, job):
         self.typ = typ
         self.job = job
-
-
-
-
-

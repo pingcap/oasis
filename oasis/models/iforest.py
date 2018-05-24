@@ -20,7 +20,6 @@ from oasis.models.model import (
 )
 from oasis.libs.log import logger
 from oasis.libs.features import Features
-from oasis.libs.alert import send_to_slack
 
 IFOREST_MODEL_NAME = "iForest"
 
@@ -194,7 +193,7 @@ class IForest(Model):
         logger.info("{log_prefix}[metric:{metric}] Predict Error, predict data:{predict_data}"
                     .format(log_prefix=self.log_prefix,
                             metric=metric, predict_data=predict_data))
-        send_to_slack("{log_prefix}[model:{model}], predict metric {metric} error, "
+        self.send_to_slack("{log_prefix}[model:{model}], predict metric {metric} error, "
                       "predict data:{predict_data}"
                       .format(log_prefix=self.log_prefix,
                               model=self.name, metric=metric, predict_data=predict_data),

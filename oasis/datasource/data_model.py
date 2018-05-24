@@ -12,9 +12,7 @@ class DataModel(object):
     """
 
     def query(self, query):
-        logger.info("data_source: {data_source}"
-                    .format(data_source=data_source))
-        logger.info("query: {query}".format(query=query))
+        logger.info("dataMode query: {query}".format(query=query))
 
 
 class DataSource(object):
@@ -25,4 +23,3 @@ class DataSource(object):
 
     def to_dict(self):
         return {"url": self.url}
-

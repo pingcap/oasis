@@ -16,6 +16,7 @@ class Storage(object):
         self.model_templates = dict()
         self.model_instances = dict()
         self.jobs = dict()
+        self.jobs_by_name = dict()
 
         # load data to cache
         try:
@@ -44,6 +45,7 @@ class Storage(object):
 
             for job in jobs:
                 self.jobs[job.get('id')] = job
+                self.jobs_by_name[job.get('name')] = job
 
     def set_model_template(self, m):
         with self.lock:
@@ -112,7 +114,7 @@ class Storage(object):
 
     def get_job_by_name(self, name):
         with self.lock:
-            return self.jobs.get_by_name(name)
+            return self.jobs_by_name.get(name)
 
     def list_jobs(self):
         with self.lock:
@@ -122,5 +124,3 @@ class Storage(object):
                 jobs.append(self.client.job.get(id))
 
             return jobs
-
-

@@ -12,7 +12,6 @@ from oasis.models import Models
 from oasis.libs.alert import send_to_slack
 from oasis.models.model import MODEL_NEW
 
-
 DEFAULT_JOB_TIMEOUT = "240h"
 THREAD_JOIN_TIMEOUT = 5
 REPORT_ADDRESS = ""
@@ -27,13 +26,16 @@ JOB_STOPPED = "stopped"
 
 class Job(object):
     """Job defines config for calculation job."""
+
     def __init__(self, store, data):
         self.store = store
         self.id = data.get('id')
         self.name = data.get('name')
-        self.data_source = DataSource(ast.literal_eval(data.get('data_source'))['url'])
+        self.data_source = DataSource(
+            ast.literal_eval(data.get('data_source'))['url'])
         self.models_name = data.get('models').strip().split(',')
-        self.api_models_config = ast.literal_eval(data.get('api_models_config'))
+        self.api_models_config = ast.literal_eval(
+            data.get('api_models_config'))
         self.slack_channel = data.get('slack_channel')
         self.timeout = data.get('timeout')
         self.status = data.get('status')
@@ -73,29 +75,35 @@ class Job(object):
 
     def run(self):
         with self.lock:
-            logger.info("[job:{job}] start to run"
-                        .format(job=self.to_dict()))
+            logger.info("[job:{job}] start to run".format(job=self.to_dict()))
             try:
                 for md in self.api_models_config:
                     model = Models[md.get("name")]
                     md_instance = self.store.set_model_instance({
-                        'job_id': self.id,
-                        'model': md.get("name"),
-                        'report': '',
-                        'status': MODEL_NEW
+                        'job_id':
+                        self.id,
+                        'model':
+                        md.get("name"),
+                        'report':
+                        '',
+                        'status':
+                        MODEL_NEW
                     })
-                    model_runner = model(md_instance, self.store, md, self.data_source, self.slack_channel, self.timeout)
+                    model_runner = model(md_instance, self.store, md,
+                                         self.data_source, self.slack_channel,
+                                         self.timeout)
                     t = Thread(target=model_runner.run)
                     t.start()
                     self.running_models.append(model_runner)
                     self.threads[md.get("name")] = t
             except Exception as e:
-                logger.info("[job:{job}] fail to star: {err}"
-                            .format(job=self.to_dict(), err=str(e)))
+                logger.info("[job:{job}] fail to star: {err}".format(
+                    job=self.to_dict(), err=str(e)))
                 logger.exception("Exception Logged")
                 self.status = JOB_ERROR
             else:
-                self.timer = Timer(timeparse(self.timeout), self.timeout_action)
+                self.timer = Timer(
+                    timeparse(self.timeout), self.timeout_action)
                 self.status = JOB_RUNNING
             finally:
                 self.save_job()
@@ -116,8 +124,8 @@ class Job(object):
 
                 self.timer.cancel()
             except Exception as e:
-                logger.info("[job-id:{job_id}] fail to stop: {err}"
-                            .format(job_id=self.id, err=str(e)))
+                logger.info("[job-id:{job_id}] fail to stop: {err}".format(
+                    job_id=self.id, err=str(e)))
                 self.status = JOB_ERROR
             else:
                 self.status = JOB_STOPPED
@@ -156,17 +164,12 @@ class Job(object):
             self.save_job()
 
     def timeout_action(self):
-        logger.info("[job:{job}] finish"
-                    .format(job=self.to_dict()))
+        logger.info("[job:{job}] finish".format(job=self.to_dict()))
 
         self.status = JOB_FINISHED
         self.save_job()
 
-        send_to_slack("{job:{job} finish \n. report detail: {url}"
-                      .format(job=self.to_dict(),
-                              url=urlparse.urljoin(REPORT_ADDRESS,
-                                                   "api/v1/job/{job_id}/report"
-                                                   .format(job_id=self.id))))
-
-
-
+        send_to_slack("[job:{job}] finish.\n report detail: {url}".format(
+            job=self.to_dict(),
+            url=urlparse.urljoin(
+                REPORT_ADDRESS, "/detail?id={job_id}".format(job_id=self.id))))

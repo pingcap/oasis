@@ -10,5 +10,3 @@ Models = {
     IFOREST_MODEL_NAME: IForest,
     RULES_MODEL_NAME: Rules,
 }
-
-

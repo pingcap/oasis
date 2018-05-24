@@ -46,4 +46,3 @@ class TaskTypeNotSupportedException(Exception):
 class CloseJobException(Exception):
     def __init__(self):
         pass
-

@@ -49,23 +49,23 @@ class ModelTemplate(object):
         self.db = db
 
     def add(self, m):
-        self.db.execute('INSERT INTO model_template (name, config) VALUES (?, ?);',
-                        (m.get('name'), str(json.dumps(m.get('config'), default=json_serial))))
+        self.db.execute(
+            'INSERT INTO model_template (name, config) VALUES (?, ?);',
+            (m.get('name'),
+             str(json.dumps(m.get('config'), default=json_serial))))
 
         return self.get(m.get('name'))
 
     def update(self, m):
-        self.db.execute([
-            'UPDATE model_template SET',
-            '   config = ?',
-            'WHERE name = ?;'],
+        self.db.execute(
+            ['UPDATE model_template SET', '   config = ?', 'WHERE name = ?;'],
             (str(m.get('config')), m.get('name')))
 
         return self.get(m.get('name'))
 
     def get(self, name):
-        data = self.db.execute(
-            'SELECT * FROM model_template WHERE name = ?;', (name, )).fetchone()
+        data = self.db.execute('SELECT * FROM model_template WHERE name = ?;',
+                               (name, )).fetchone()
 
         if data is not None:
             return dict(zip(self.fields, data))
@@ -102,33 +102,28 @@ class ModelInstance(object):
 
     def add(self, m):
         stmt = self.db.execute([
-            'INSERT INTO model_instance (',
-            '   model, job_id,'
-            '   report, status)',
-            'VALUES (?, ?, ?, ?);'],
-            (m.get('model'), m.get('job_id'),
-             str(json.dumps(m.get('report'), default=json_serial)), m.get('status'))
-        )
+            'INSERT INTO model_instance (', '   model, job_id,'
+            '   report, status)', 'VALUES (?, ?, ?, ?);'
+        ], (m.get('model'), m.get('job_id'),
+            str(json.dumps(m.get('report'), default=json_serial)),
+            m.get('status')))
 
         m['id'] = stmt.lastrowid
         return m
 
     def update(self, m):
         self.db.execute([
-            'UPDATE model_instance SET',
-            '   model = ?, job_id = ?,',
-            '   report = ?, status = ?',
-            'WHERE id = ?;'],
-            (m.get('model'), m.get('job_id'),
-             str(json.dumps(m.get('report'), default=json_serial)),
-             m.get('status'), m.get('id'))
-        )
+            'UPDATE model_instance SET', '   model = ?, job_id = ?,',
+            '   report = ?, status = ?', 'WHERE id = ?;'
+        ], (m.get('model'), m.get('job_id'),
+            str(json.dumps(m.get('report'), default=json_serial)),
+            m.get('status'), m.get('id')))
 
         return self.get(m.get('id'))
 
     def get(self, id):
-        data = self.db.execute(
-            'SELECT * FROM model_instance WHERE id = ?;', (id, )).fetchone()
+        data = self.db.execute('SELECT * FROM model_instance WHERE id = ?;',
+                               (id, )).fetchone()
 
         if data is not None:
             return dict(zip(self.fields, data))
@@ -158,8 +153,10 @@ class Job(object):
 
        The id is primary key.
     """
-    fields = ['id', 'name', 'data_source', 'models', 'timeout', 'slack_channel',
-              'model_instance_ids', 'status', 'api_models_config', 'start_time']
+    fields = [
+        'id', 'name', 'data_source', 'models', 'timeout', 'slack_channel',
+        'model_instance_ids', 'status', 'api_models_config', 'start_time'
+    ]
 
     def __init__(self, db):
         self.db = db
@@ -167,36 +164,34 @@ class Job(object):
     def add(self, job):
         now = datetime.datetime.now()
         stmt = self.db.execute([
-            'INSERT INTO job (',
-            '   name, data_source, models, timeout,',
+            'INSERT INTO job (', '   name, data_source, models, timeout,',
             '   slack_channel, model_instance_ids,'
             '   status, api_models_config, start_time)',
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);'],
-            (job.get('name'), str(json.dumps(job.get('data_source'), default=json_serial)),
-             job.get('models'),
-             job.get('timeout'), job.get('slack_channel'),
-             job.get('model_instance_ids'), job.get('status'),
-             str(json.dumps(job.get('api_models_config'), default=json_serial)), now)
-        )
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);'
+        ], (job.get('name'),
+            str(json.dumps(job.get('data_source'), default=json_serial)),
+            job.get('models'), job.get('timeout'), job.get('slack_channel'),
+            job.get('model_instance_ids'), job.get('status'),
+            str(json.dumps(job.get('api_models_config'), default=json_serial)),
+            now))
 
         return self.get(stmt.lastrowid)
 
     def update(self, job):
         self.db.execute([
-            'UPDATE job SET ',
-            '   data_source = ?, models = ?, timeout = ?,',
+            'UPDATE job SET ', '   data_source = ?, models = ?, timeout = ?,',
             '   slack_channel = ?,model_instance_ids = ?,',
-            '   status = ?, api_models_config = ?',
-            'WHERE id = ?;'],
-            (str(json.dumps(job.get('data_source'), default=json_serial)), job.get('models'),
-             job.get('timeout'), job.get('slack_channel'),
-             job.get('model_instance_ids'), job.get('status'),
-             str(json.dumps(job.get('api_models_config'), default=json_serial)), job.get('id'))
-        )
+            '   status = ?, api_models_config = ?', 'WHERE id = ?;'
+        ], (str(json.dumps(job.get('data_source'), default=json_serial)),
+            job.get('models'), job.get('timeout'), job.get('slack_channel'),
+            job.get('model_instance_ids'), job.get('status'),
+            str(json.dumps(job.get('api_models_config'), default=json_serial)),
+            job.get('id')))
         return self.get(job.get('id'))
 
     def get(self, id):
-        data = self.db.execute('SELECT * FROM job WHERE id = ?;', (id, )).fetchone()
+        data = self.db.execute('SELECT * FROM job WHERE id = ?;',
+                               (id, )).fetchone()
 
         if data is not None:
             return dict(zip(self.fields, data))
@@ -204,7 +199,8 @@ class Job(object):
         return None
 
     def get_by_name(self, name):
-        data = self.db.execute('SELECT * FROM job WHERE name = ?;', (name, )).fetchone()
+        data = self.db.execute('SELECT * FROM job WHERE name = ?;',
+                               (name, )).fetchone()
 
         if data is not None:
             return dict(zip(self.fields, data))
@@ -220,4 +216,3 @@ class Job(object):
             jobs.append(dict(zip(self.fields, item)))
 
         return jobs
-

@@ -17,14 +17,16 @@ from oasis.libs.log import logger
 from oasis.libs import alert
 from oasis.manager import Manager
 from oasis.handler import OasisHandler
-
+from oasis.models import model
 
 define("config", default="", help="path to config file")
 define("port", default=33338, help="service port")
 define("address", default="", help="the address of external access")
 define("slack_token", default="", help="slack token")
-define("models_path", default="",
-       help="path of models, including the config files of all models")
+define(
+    "models_path",
+    default="",
+    help="path of models, including the config files of all models")
 define("db_path", default="", help="the path of the database file")
 
 MAX_WAIT_SECONDS_BEFORE_SHUTDOWN = 3
@@ -48,13 +50,15 @@ def parse_config():
         sys.exit(1)
 
     if options.db_path == "":
-        logger.info("path of database is not set, use the default db path: {path}"
-                    .format(path=DEFAULT_DB_PATH))
+        logger.info(
+            "path of database is not set, use the default db path: {path}"
+            .format(path=DEFAULT_DB_PATH))
         options.db_path = DEFAULT_DB_PATH
 
     mg.MODELS_PATH = options.models_path
     alert.SLACK_TOKEN = options.slack_token
     job.REPORT_ADDRESS = options.address
+    model.REPORT_ADDRESS = options.address
 
     logger.info("config: {config}".format(config=options.items()))
 
@@ -86,7 +90,8 @@ def sig_handler(server, manager, sig, frame):
 def make_app(handler):
     return tornado.web.Application([
         (r"/api/v1/job/new", handler.JobNewHandler),
-        (r"/api/v1/job/(?P<job_id>[\w+|\-]+)/detail", handler.JobDetailHandler),
+        (r"/api/v1/job/(?P<job_id>[\w+|\-]+)/detail",
+         handler.JobDetailHandler),
         (r"/api/v1/job/(?P<job_id>[\w+|\-]+)/stop", handler.JobStopHandler),
         (r"/api/v1/jobs/list", handler.JobListHandler),
         (r"/api/v1/model_templates/list", handler.ModelTemplatesListHandler),
@@ -109,11 +114,10 @@ def main():
     server.listen(options.port)
 
     for sig in ('TERM', 'HUP', 'INT'):
-        signal.signal(getattr(signal, 'SIG' + sig),
-                      partial(sig_handler, server, manager))
+        signal.signal(
+            getattr(signal, 'SIG' + sig), partial(sig_handler, server,
+                                                  manager))
 
     tornado.ioloop.IOLoop.current().start()
 
     logger.info("Exit...")
-
-

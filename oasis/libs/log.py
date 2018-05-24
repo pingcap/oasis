@@ -5,7 +5,6 @@ import logging
 import sys
 from tornado.log import gen_log, access_log, app_log
 
-
 formatter = logging.Formatter(
     fmt='[%(asctime)s %(filename)s:%(lineno)d] %(message)s',
     datefmt='%y/%m/%d %H:%M:%S')
@@ -40,4 +39,3 @@ def set_tornado_log():
 
 set_tornado_log()
 logger = get_logger()
-

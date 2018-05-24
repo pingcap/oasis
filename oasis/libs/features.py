@@ -48,4 +48,3 @@ Features = {
     "median": median,
     "ptp": ptp
 }
-

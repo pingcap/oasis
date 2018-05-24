@@ -4,10 +4,13 @@ from __future__ import absolute_import
 
 import yaml
 import time
+import urlparse
 from threading import Event, Lock
 from oasis.libs.log import logger
+from oasis.libs.alert import send_to_slack
 
 THREAD_JOIN_TIMEOUT = 5
+REPORT_ADDRESS = ""
 
 MODEL_NEW = "new"
 MODEL_RUNNING = "running"
@@ -54,6 +57,12 @@ class Model(object):
     def get_id(self):
         return self.md_instance.get('id')
 
+    def send_to_slack(self, message, slack_channel): 
+        send_to_slack(message+"\n"+"Job Detail: {url}"
+                .format(urlparse.urljoin(REPORT_ADDRESS, 
+                        "/detail?id={job_id}"
+                                .format(job_id=self.md_instance.get("job_id")))), slack_channel) 
+
     @staticmethod
     def get_model_template(name, model_path):
         config_file = "{path}/{name}.yml".format(path=model_path, name=name)
@@ -61,7 +70,7 @@ class Model(object):
             cfg = yaml.load(yml_file)
 
         return cfg
-
+    
 
 class Config(object):
     def __init__(self, model_template, config_json=None):

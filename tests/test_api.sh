@@ -2,8 +2,9 @@
 
 json_data='''
 {
+    "name": "test-0x1",
     "data_source": {
-        "url": "http://40.125.162.12:34470"
+        "url": "http://40.125.162.12:40654"
     },
     "timeout": "24h",
     "models": [

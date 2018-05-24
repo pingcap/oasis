@@ -7,11 +7,8 @@ import tornado.locks
 from oasis.libs.alert import DEFAULT_CHANNEL
 from oasis.libs.log import logger
 from oasis.job import DEFAULT_JOB_TIMEOUT
-from oasis.libs.iexceptions import (
-    NewJobException,
-    JobNotExistsException,
-    JobNotRunningException
-)
+from oasis.libs.iexceptions import (NewJobException, JobNotExistsException,
+                                    JobNotRunningException)
 
 HTTP_MISS_ARGS = 401
 HTTP_NOT_FOUND = 404
@@ -27,43 +24,49 @@ class OasisHandler(object):
             try:
                 data = json.loads(self.request.body)
             except Exception as e:
-                logger.error("load json: {json_data}\nfailed: {err}"
-                            .format(json_data=self.request.body, err=str(e)))
+                logger.error("load json: {json_data}\nfailed: {err}".format(
+                    json_data=self.request.body, err=str(e)))
                 logger.exception("Exception Logged")
 
-                self.finish({"code": HTTP_FAIL,
-                            "message": "load json data failed: {err}"
-                            .format(err=str(e))})
+                self.finish({
+                    "code":
+                    HTTP_FAIL,
+                    "message":
+                    "load json data failed: {err}".format(err=str(e))
+                })
                 return
 
             slack_channel = data.get("slack_channel", DEFAULT_CHANNEL)
             timeout = data.get("timeout", DEFAULT_JOB_TIMEOUT)
 
             try:
-                job = manager.new_job(data["name"], data["data_source"], data["models"],
-                                      slack_channel, timeout)
+                job = manager.new_job(data["name"], data["data_source"],
+                                      data["models"], slack_channel, timeout)
             except KeyError as e:
                 logger.error("add new job failed: miss args %s" % e.args[0])
                 logger.exception("Exception Logged")
 
-                data = {"code": HTTP_MISS_ARGS,
-                        "message": "miss args %s" % e.args[0]}
+                data = {
+                    "code": HTTP_MISS_ARGS,
+                    "message": "miss args %s" % e.args[0]
+                }
             except NewJobException as e:
-                logger.error("add new job failed: {err}"
-                            .format(err=str(e)))
+                logger.error("add new job failed: {err}".format(err=str(e)))
                 logger.exception("Exception Logged")
 
-                data = {"code": HTTP_FAIL,
-                        "message": "add new job failed: {err}".format(err=str(e))}
+                data = {
+                    "code": HTTP_FAIL,
+                    "message": "add new job failed: {err}".format(err=str(e))
+                }
             except Exception as e:
-                logger.error("add new job failed: {err}"
-                            .format(err=str(e)))
+                logger.error("add new job failed: {err}".format(err=str(e)))
                 logger.exception("Exception Logged")
-                data = {"code": HTTP_FAIL,
-                        "message": "add new job failed: {err}".format(err=str(e))}
+                data = {
+                    "code": HTTP_FAIL,
+                    "message": "add new job failed: {err}".format(err=str(e))
+                }
             else:
-                data = {"code": HTTP_OK,
-                        "message": "OK", "data": job}
+                data = {"code": HTTP_OK, "message": "OK", "data": job}
             finally:
                 self.finish(data)
 
@@ -71,35 +74,51 @@ class OasisHandler(object):
         def get(self, job_id):
             if job_id == "":
                 logger.error("job id is required")
-                self.finish({"code": HTTP_MISS_ARGS,
-                            "message": "job id is required"})
+                self.finish({
+                    "code": HTTP_MISS_ARGS,
+                    "message": "job id is required"
+                })
                 return
 
             try:
-                logger.info("close running job:{job_id}"
-                            .format(job_id=job_id))
+                logger.info("close running job:{job_id}".format(job_id=job_id))
                 manager.stop_job(int(job_id))
             except JobNotExistsException:
                 logger.error("close job:{job_id} failed: job is not exist"
-                            .format(job_id=job_id))
+                             .format(job_id=job_id))
                 logger.exception("Exception Logged")
 
-                data = {"code": HTTP_FAIL,
-                        "message": "close job:{job_id} failed: job is not exist".format(job_id=job_id)}
+                data = {
+                    "code":
+                    HTTP_FAIL,
+                    "message":
+                    "close job:{job_id} failed: job is not exist".format(
+                        job_id=job_id)
+                }
             except JobNotRunningException:
                 logger.error("close job:{job_id} failed: job is not running"
-                            .format(job_id=job_id))
+                             .format(job_id=job_id))
                 logger.exception("Exception Logged")
 
-                data = {"code": HTTP_FAIL,
-                        "message": "close job:{job_id} failed: job is not running".format(job_id=job_id)}
+                data = {
+                    "code":
+                    HTTP_FAIL,
+                    "message":
+                    "close job:{job_id} failed: job is not running".format(
+                        job_id=job_id)
+                }
             except Exception as e:
-                logger.error("close job:{job_id} failed:{err}"
-                            .format(job_id=job_id, err=str(e)))
+                logger.error("close job:{job_id} failed:{err}".format(
+                    job_id=job_id, err=str(e)))
                 logger.exception("Exception Logged")
 
-                data = {"code": HTTP_FAIL,
-                        "message": "close job:{job_id} failed:{err}".format(job_id=job_id, err=str(e))}
+                data = {
+                    "code":
+                    HTTP_FAIL,
+                    "message":
+                    "close job:{job_id} failed:{err}".format(
+                        job_id=job_id, err=str(e))
+                }
             else:
                 data = {"code": HTTP_OK, "message": "OK"}
             finally:
@@ -110,21 +129,31 @@ class OasisHandler(object):
             size = self.get_argument('size', 10)
             offset = self.get_argument('offset', 0)
 
-            logger.info("list jobs offset {offset} size {size}"
-                        .format(offset=offset, size=size))
+            logger.info("list jobs offset {offset} size {size}".format(
+                offset=offset, size=size))
 
             try:
                 jobs = manager.list_jobs(offset=int(offset), size=int(size))
                 jobs_len = manager.get_jobs_len()
             except Exception as e:
-                logger.info("list jobs offset {offset} size {size}, failed: {err}"
-                            .format(offset=offset, size=size, err=str(e)))
+                logger.info(
+                    "list jobs offset {offset} size {size}, failed: {err}"
+                    .format(offset=offset, size=size, err=str(e)))
                 logger.exception("Exception Logged")
-                data = {"code": HTTP_FAIL,
-                        "message": "list jobs offset {offset} size {size}, failed: {err}"
-                            .format(offset=offset, size=size, err=str(e))}
+                data = {
+                    "code":
+                    HTTP_FAIL,
+                    "message":
+                    "list jobs offset {offset} size {size}, failed: {err}"
+                    .format(offset=offset, size=size, err=str(e))
+                }
             else:
-                data = {"code": HTTP_OK, "message": "OK", "data": jobs, "count": jobs_len}
+                data = {
+                    "code": HTTP_OK,
+                    "message": "OK",
+                    "data": jobs,
+                    "count": jobs_len
+                }
             finally:
                 self.finish(data)
 
@@ -132,29 +161,39 @@ class OasisHandler(object):
         def get(self, job_id):
             if job_id == "":
                 logger.error("job id is required")
-                self.finish({"code": HTTP_MISS_ARGS,
-                            "message": "job id is required"})
+                self.finish({
+                    "code": HTTP_MISS_ARGS,
+                    "message": "job id is required"
+                })
                 return
 
             try:
-                logger.info("get job:{job_id} detail"
-                            .format(job_id=job_id))
+                logger.info("get job:{job_id} detail".format(job_id=job_id))
                 job = manager.get_job(int(job_id))
             except JobNotExistsException:
                 logger.error("get job:{job_id} detail failed: job is not exist"
-                            .format(job_id=job_id))
+                             .format(job_id=job_id))
                 logger.exception("Exception Logged")
 
-                data = {"code": HTTP_NOT_FOUND,
-                        "message": "get job:{job_id} failed: job is not exist".format(job_id=job_id)}
+                data = {
+                    "code":
+                    HTTP_NOT_FOUND,
+                    "message":
+                    "get job:{job_id} failed: job is not exist".format(
+                        job_id=job_id)
+                }
             except Exception as e:
-                logger.error("get job:{job_id} detail failed:{err}"
-                            .format(job_id=job_id, err=str(e)))
+                logger.error("get job:{job_id} detail failed:{err}".format(
+                    job_id=job_id, err=str(e)))
                 logger.exception("Exception Logged")
 
-                data = {"code": HTTP_FAIL,
-                        "message": "get job:{job_id} detail failed:{err}"
-                            .format(job_id=job_id, err=str(e))}
+                data = {
+                    "code":
+                    HTTP_FAIL,
+                    "message":
+                    "get job:{job_id} detail failed:{err}".format(
+                        job_id=job_id, err=str(e))
+                }
             else:
                 data = {"code": HTTP_OK, "message": "OK", "data": job}
             finally:
@@ -166,17 +205,23 @@ class OasisHandler(object):
             size = self.get_argument("size", 10)
 
             logger.info("list model templates offset {offset} size {size}"
-                    .format(offset=offset, size=size))
+                        .format(offset=offset, size=size))
 
             try:
-                templates = manager.list_model_templates(offset=int(offset), size=int(size))
+                templates = manager.list_model_templates(
+                    offset=int(offset), size=int(size))
             except Exception as e:
-                logger.info("list model templates offset {offset} size {size}, failed: {err}"
-                            .format(offset=offset, size=size, err=str(e)))
+                logger.info(
+                    "list model templates offset {offset} size {size}, failed: {err}"
+                    .format(offset=offset, size=size, err=str(e)))
                 logger.exception("Exception Logged")
-                data = {"code": HTTP_FAIL,
-                        "message": "list model templates offset {offset} size {size}, failed: {err}"
-                            .format(offset=offset, size=size, err=str(e))}
+                data = {
+                    "code":
+                    HTTP_FAIL,
+                    "message":
+                    "list model templates offset {offset} size {size}, failed: {err}"
+                    .format(offset=offset, size=size, err=str(e))
+                }
             else:
                 data = {"code": HTTP_OK, "message": "OK", "data": templates}
             finally:
@@ -187,18 +232,24 @@ class OasisHandler(object):
             offset = self.get_argument("offset", 0)
             size = self.get_argument("size", 10)
 
-            logger.info("list metrics offset {offset} size {size}"
-                    .format(offset=offset, size=size))
+            logger.info("list metrics offset {offset} size {size}".format(
+                offset=offset, size=size))
 
             try:
-                metrics = manager.list_metrics(offset=int(offset), size=int(size))
+                metrics = manager.list_metrics(
+                    offset=int(offset), size=int(size))
             except Exception as e:
-                logger.info("list metrics offset {offset} size {size}, failed: {err}"
-                            .format(offset=offset, size=size, err=str(e)))
+                logger.info(
+                    "list metrics offset {offset} size {size}, failed: {err}"
+                    .format(offset=offset, size=size, err=str(e)))
                 logger.exception("Exception Logged")
-                data = {"code": HTTP_FAIL,
-                        "message": "list metrics offset {offset} size {size}, failed: {err}"
-                            .format(offset=offset, size=size, err=str(e))}
+                data = {
+                    "code":
+                    HTTP_FAIL,
+                    "message":
+                    "list metrics offset {offset} size {size}, failed: {err}"
+                    .format(offset=offset, size=size, err=str(e))
+                }
             else:
                 data = {"code": HTTP_OK, "message": "OK", "data": metrics}
             finally:
