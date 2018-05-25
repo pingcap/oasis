@@ -21,6 +21,7 @@ MODEL_FINISH = "finish"
 
 class Model(object):
     """Model is a abstract of calculation model."""
+
     def __init__(self, name, md_instance, store, cfg):
         self.name = name
         self.md_instance = md_instance
@@ -31,7 +32,8 @@ class Model(object):
         self.lock = Lock()
         self._exit = False
         self.status = MODEL_NEW
-        self.report = ModelReport(self.name, md_instance.get('job_id'), self.cfg.to_dict())
+        self.report = ModelReport(self.name, md_instance.get('job_id'),
+                                  self.cfg.to_dict())
         self.log_prefix = "[job-id:{id}][model:{model}]"\
             .format(id=md_instance.get('job_id'), model=name)
 
@@ -57,11 +59,14 @@ class Model(object):
     def get_id(self):
         return self.md_instance.get('id')
 
-    def send_to_slack(self, message, slack_channel): 
-        send_to_slack(message+"\n"+"Job Detail: {url}"
-                .format(urlparse.urljoin(REPORT_ADDRESS, 
-                        "/detail?id={job_id}"
-                                .format(job_id=self.md_instance.get("job_id")))), slack_channel) 
+    def send_to_slack(self, message, slack_channel):
+        send_to_slack(
+            message + "\n" + "Job Detail: {url}".format(
+                url=urlparse.urljoin(
+                    REPORT_ADDRESS,
+                    "/detail?id={job_id}"
+                    .format(job_id=self.md_instance.get("job_id")))),
+            slack_channel)
 
     @staticmethod
     def get_model_template(name, model_path):
@@ -70,7 +75,7 @@ class Model(object):
             cfg = yaml.load(yml_file)
 
         return cfg
-    
+
 
 class Config(object):
     def __init__(self, model_template, config_json=None):
@@ -103,10 +108,7 @@ class Config(object):
         logger.info("set default config")
 
     def to_dict(self):
-        return {
-            "model": self.model,
-            "metrics": self.metrics
-        }
+        return {"model": self.model, "metrics": self.metrics}
 
 
 class ModelReport(object):
@@ -125,5 +127,3 @@ class ModelReport(object):
             "start_time": self.start_time,
             "metrics_report": self.metrics_report
         }
-
-
