@@ -97,13 +97,14 @@ class Job(object):
                     self.running_models.append(model_runner)
                     self.threads[md.get("name")] = t
             except Exception as e:
-                logger.info("[job:{job}] fail to star: {err}".format(
+                logger.info("[job:{job}] fail to start: {err}".format(
                     job=self.to_dict(), err=str(e)))
                 logger.exception("Exception Logged")
                 self.status = JOB_ERROR
             else:
                 self.timer = Timer(
                     timeparse(self.timeout), self.timeout_action)
+                self.timer.start()
                 self.status = JOB_RUNNING
             finally:
                 self.save_job()
@@ -124,7 +125,7 @@ class Job(object):
 
                 self.timer.cancel()
             except Exception as e:
-                logger.info("[job-id:{job_id}] fail to stop: {err}".format(
+                logger.error("[job-id:{job_id}] fail to stop: {err}".format(
                     job_id=self.id, err=str(e)))
                 self.status = JOB_ERROR
             else:
@@ -164,12 +165,16 @@ class Job(object):
             self.save_job()
 
     def timeout_action(self):
-        logger.info("[job:{job}] finish".format(job=self.to_dict()))
+        logger.info("[job-id:{job_id}] finish".format(job_id=self.id))
 
         self.status = JOB_FINISHED
         self.save_job()
 
-        send_to_slack("[job:{job}] finish.\n report detail: {url}".format(
-            job=self.to_dict(),
-            url=urlparse.urljoin(
-                REPORT_ADDRESS, "/detail?id={job_id}".format(job_id=self.id))))
+        send_to_slack(
+            "[job-id:{job_id}, name:{name}] finish.\n report detail: {url}".
+            format(
+                job_id=self.id,
+                name=self.name,
+                url=urlparse.urljoin(
+                    REPORT_ADDRESS,
+                    "/detail?id={job_id}".format(job_id=self.id))))

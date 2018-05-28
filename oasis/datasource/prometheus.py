@@ -67,27 +67,35 @@ class PrometheusAPI(DataModel):
 
     def query(self, query):
         data_set = dict()
+        try:
+            response = requests.get(
+                self.data_source.url + self._range_query_api,
+                params={
+                    'query': query.expr,
+                    'start': query.start_time,
+                    'end': query.end_time,
+                    'step': query.step
+                })
+            status = response.json()['status']
 
-        response = requests.get(
-            self.data_source.url + self._range_query_api,
-            params={
-                'query': query.expr,
-                'start': query.start_time,
-                'end': query.end_time,
-                'step': query.step
-            })
-        status = response.json()['status']
+            if status == "error":
+                logging.error(response.json())
+                return
 
-        if status == "error":
-            logging.error(response.json())
-            return
-
-        results = response.json()['data']['result']
-        if len(results):
-            for value in results[0]['values']:
-                data_set[value[0]] = value[1]
-
-        return data_set
+            results = response.json()['data']['result']
+            if len(results):
+                for value in results[0]['values']:
+                    data_set[value[0]] = value[1]
+        except Exception as e:
+            logging.error(
+                "datasource: {datasource}, query: {query}, failed: {err}".
+                format(
+                    datasource=self.data_source.to_dict(),
+                    query=query.to_dict,
+                    err=str(e)))
+            logging.exception("Exception Logged")
+        finally:
+            return data_set
 
 
 class PrometheusQuery(object):
@@ -96,6 +104,14 @@ class PrometheusQuery(object):
         self.start_time = start_time
         self.end_time = end_time
         self.step = step
+
+    def to_dict(self):
+        return {
+            "expr": self.expr,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "step": self.step
+        }
 
 
 def write2csv(filename, model, ids, data_set):
