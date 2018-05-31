@@ -43,7 +43,7 @@
           </div>
           <el-form-item label="Name:" :prop="'models.' + index + '.name'">
             <el-select v-model="model.name" placeholder="select model template" style="width:100%">
-              <el-option v-for="(model, index) in modelTemplates" :key="model.id" :label="model.name" :value="model.name"></el-option>
+              <el-option v-for="(model) in modelTemplates" :key="model.id" :label="model.name" :value="model.name"></el-option>
             </el-select>
           </el-form-item>
           <el-form-item label="Metrics:" :prop="'models.'+index + '.metrics'">
@@ -65,7 +65,7 @@
       </div>
     </el-dialog>
     <div class="pagination">
-      <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="currentPage" :page-sizes="[1, 2, 3, 4]" :page-size="pageSize" background layout="total, sizes, prev, pager, next, jumper" :total="jobCount">
+      <el-pagination @size-change="handleSizeChange" @current-change="handleCurrentChange" :current-page="currentPage" :page-sizes="[10, 20, 30, 40]" :page-size="pageSize" background layout="total, sizes, prev, pager, next, jumper" :total="jobCount">
       </el-pagination>
     </div>
   </div>
@@ -85,7 +85,7 @@ export default {
   data() {
     return {
       currentPage: 0,
-      pageSize: 2,
+      pageSize: 10,
       jobCount: 0,
       tableData: {
         label: ['Job ID', 'Name', 'Status', 'Models', 'Create Time'],
@@ -96,7 +96,6 @@ export default {
             return
           }
 
-          // router.push({ name: 'JobDetailView', params: { id: row.id }})
           window.location.href = 'detail?id=' + row.id;
         },
 
@@ -169,20 +168,22 @@ export default {
   },
 
   methods: {
-    fetchAndSetJobs(offset = 0, size = 2) {
+    fetchAndSetJobs(offset = 0, size = 10) {
       ajax.getJobs(offset, size).then((result) => {
         this.tableData.list = result.data.data;
         this.jobCount = result.data.count;
       }).catch(() => {});
     },
 
-    handleSizeChange(pageSize) {
-      this.pageSize = pageSize;
+    handleSizeChange(page_Size) {
+      this.pageSize = page_Size;
       this.fetchAndSetJobs(0, this.pageSize);
+      this.currentPage = 0;
     },
 
-    handleCurrentChange(page) {
-      this.fetchAndSetJobs((page - 1) * this.pageSize, this.pageSize);
+    handleCurrentChange(current_page) {
+      this.currentPage = current_page;
+      this.fetchAndSetJobs((current_page - 1) * this.pageSize, this.pageSize);
     },
 
     clickCreateJob: function() {
