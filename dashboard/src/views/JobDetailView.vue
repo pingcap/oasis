@@ -64,7 +64,6 @@
 <script>
 import ajax from '../request/index'
 import VueJsonPretty from 'vue-json-pretty'
-import myCascader from '../components/Cascader'
 import _ from 'lodash'
 var DataSet = require('vis/lib/DataSet');
 var Timeline = require('vis/lib/timeline/Timeline');
@@ -72,8 +71,7 @@ var Timeline = require('vis/lib/timeline/Timeline');
 var fetchTimer;
 export default {
   components: {
-    VueJsonPretty,
-    myCascader
+    VueJsonPretty
   },
   name: 'detail',
   data() {
